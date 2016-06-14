@@ -1,0 +1,107 @@
+\begin{thebibliography}{10}
+
+\bibitem{dale_improved_1993}
+{\sc A.~M. Dale and M.~I. Sereno}, {\em Improved localization of cortical
+  activity by combining {EEG} and {MEG} with {MRI} cortical surface
+  reconstruction: A linear approach.}, Journal of Cognitive Neuroscience, 5
+  (1993), pp.~162--176.
+
+\bibitem{desikan_automated_2006}
+{\sc R.~S. Desikan, F.~Segonne, B.~Fischl, B.~T. Quinn, B.~C. Dickerson,
+  D.~Blacker, R.~L. Buckner, A.~M. Dale, R.~P. Maguire, B.~T. Hyman, M.~S.
+  Albert, and R.~J. Killiany}, {\em An automated labeling system for
+  subdividing the human cerebral cortex on {MRI} scans into gyral based regions
+  of interest}, Neuroimage, 31 (2006), pp.~968--80.
+
+\bibitem{dickerson_detection_2008}
+{\sc B.~C. Dickerson, E.~Fenstermacher, D.~H. Salat, D.~A. Wolk, R.~P. Maguire,
+  R.~Desikan, J.~Pacheco, B.~T. Quinn, A.~Van~der Kouwe, D.~N. Greve,
+  D.~Blacker, M.~S. Albert, R.~J. Killiany, and B.~Fischl}, {\em Detection of
+  cortical thickness correlates of cognitive performance: Reliability across
+  {MRI} scan sessions, scanners, and field strengths}, Neuroimage, 39 (2008),
+  pp.~10--8.
+
+\bibitem{fischl_measuring_2000}
+{\sc B.~Fischl and A.~M. Dale}, {\em Measuring the thickness of the human
+  cerebral cortex from magnetic resonance images}, Proc Natl Acad Sci U S A, 97
+  (2000), pp.~11050--5.
+
+\bibitem{fischl_automated_2001}
+{\sc B.~Fischl, A.~Liu, and A.~M. Dale}, {\em Automated manifold surgery:
+  constructing geometrically accurate and topologically correct models of the
+  human cerebral cortex}, {IEEE} Trans Med Imaging, 20 (2001), pp.~70--80.
+
+\bibitem{fischl_whole_2002}
+{\sc B.~Fischl, D.~H. Salat, E.~Busa, M.~Albert, M.~Dieterich, C.~Haselgrove,
+  A.~van~der Kouwe, R.~Killiany, D.~Kennedy, S.~Klaveness, A.~Montillo,
+  N.~Makris, B.~Rosen, and A.~M. Dale}, {\em Whole brain segmentation:
+  automated labeling of neuroanatomical structures in the human brain}, Neuron,
+  33 (2002), pp.~341--55.
+
+\bibitem{fischl_sequence-independent_2004}
+{\sc B.~Fischl, D.~H. Salat, A.~J. van~der Kouwe, N.~Makris, F.~Segonne, B.~T.
+  Quinn, and A.~M. Dale}, {\em Sequence-independent segmentation of magnetic
+  resonance images}, Neuroimage, 23 Suppl 1 (2004), pp.~S69--84.
+
+\bibitem{han_reliability_2006}
+{\sc X.~Han, J.~Jovicich, D.~Salat, A.~van~der Kouwe, B.~Quinn, S.~Czanner,
+  E.~Busa, J.~Pacheco, M.~Albert, R.~Killiany, P.~Maguire, D.~Rosas, N.~Makris,
+  A.~Dale, B.~Dickerson, and B.~Fischl}, {\em Reliability of {MRI}-derived
+  measurements of human cerebral cortical thickness: the effects of field
+  strength, scanner upgrade and manufacturer}, Neuroimage, 32 (2006),
+  pp.~180--94.
+
+\bibitem{pienaar_methodology_2008}
+{\sc R.~Pienaar, B.~Fischl, V.~Caviness, N.~Makris, and P.~E. Grant}, {\em A
+  methodology for analyzing curvature in the developing brain from preterm to
+  adult}, Int J Imaging Syst Technol, 18 (2008), pp.~42--68.
+
+\bibitem{postelnicu_combined_2009}
+{\sc G.~Postelnicu, L.~Zollei, and B.~Fischl}, {\em Combined volumetric and
+  surface registration}, {IEEE} Trans Med Imaging, 28 (2009), pp.~508--22.
+
+\bibitem{reuter_within-subject_2012}
+{\sc M.~Reuter, N.~J. Schmansky, H.~D. Rosas, and B.~Fischl}, {\em
+  Within-subject template estimation for unbiased longitudinal image analysis},
+  Neuroimage, 61 (2012), pp.~1402--18.
+
+\bibitem{ReutEtal14}
+{\sc M.~Reuter, M.~D. Tisdall, A.~Qureshi, R.~L. Buckner, A.~J.~W. van~der
+  Kouwe, and B.~Fischl}, {\em Head motion during mri acquisition reduces gray
+  matter volume and thickness estimates}, {NeuroImage}, 107 (2014),
+  pp.~107--115.
+
+\bibitem{rosas_regional_2002}
+{\sc H.~D. Rosas, A.~K. Liu, S.~Hersch, M.~Glessner, R.~J. Ferrante, D.~H.
+  Salat, A.~van~der Kouwe, B.~G. Jenkins, A.~M. Dale, and B.~Fischl}, {\em
+  Regional and progressive thinning of the cortical ribbon in huntington's
+  disease}, Neurology, 58 (2002), pp.~695--701.
+
+\bibitem{sabuncu_generative_2010}
+{\sc M.~R. Sabuncu, B.~T. Yeo, K.~Van~Leemput, B.~Fischl, and P.~Golland}, {\em
+  A generative model for image segmentation based on label fusion}, {IEEE}
+  Trans Med Imaging, 29 (2010), pp.~1714--29.
+
+\bibitem{segonne_hybrid_2004}
+{\sc F.~Segonne, A.~M. Dale, E.~Busa, M.~Glessner, D.~Salat, H.~K. Hahn, and
+  B.~Fischl}, {\em A hybrid approach to the skull stripping problem in {MRI}},
+  Neuroimage, 22 (2004), pp.~1060--75.
+
+\bibitem{van_leemput_automated_2009}
+{\sc K.~Van~Leemput, A.~Bakkour, T.~Benner, G.~Wiggins, L.~L. Wald,
+  J.~Augustinack, B.~C. Dickerson, P.~Golland, and B.~Fischl}, {\em Automated
+  segmentation of hippocampal subfields from ultra-high resolution in vivo
+  {MRI}}, Hippocampus, 19 (2009), pp.~549--57.
+
+\bibitem{vonEconomo}
+{\sc C.~von Economo}, {\em he Cytoarchitectonics of the Human Cerebral
+  Cortex.}, Oxford University Press,, 1929.
+
+\bibitem{yendiki_automated_2011}
+{\sc A.~Yendiki, P.~Panneck, P.~Srinivasan, A.~Stevens, L.~Zollei,
+  J.~Augustinack, R.~Wang, D.~Salat, S.~Ehrlich, T.~Behrens, S.~Jbabdi,
+  R.~Gollub, and B.~Fischl}, {\em Automated probabilistic reconstruction of
+  white-matter pathways in health and disease using an atlas of the underlying
+  anatomy}, Front Neuroinform, 5 (2011), p.~23.
+
+\end{thebibliography}

@@ -1,0 +1,46 @@
+This is BibTeX, Version 0.99d (TeX Live 2013)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: FSEDIT-GUIDE-1.aux
+The style file: siam.bst
+Database file #1: FreeSurferZoteroLibrary.bib
+You've used 18 entries,
+            2030 wiz_defined-function locations,
+            612 strings with 8360 characters,
+and the built_in function-call counts, 9865 in all, are:
+= -- 914
+> -- 718
+< -- 0
++ -- 288
+- -- 266
+* -- 892
+:= -- 1580
+add.period$ -- 18
+call.type$ -- 18
+change.case$ -- 186
+chr.to.int$ -- 0
+cite$ -- 18
+duplicate$ -- 336
+empty$ -- 496
+format.name$ -- 266
+if$ -- 2003
+int.to.chr$ -- 0
+int.to.str$ -- 18
+missing$ -- 19
+newline$ -- 57
+num.names$ -- 36
+pop$ -- 158
+preamble$ -- 1
+purify$ -- 169
+quote$ -- 0
+skip$ -- 328
+stack$ -- 0
+substring$ -- 571
+swap$ -- 172
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 70
+warning$ -- 0
+while$ -- 84
+width$ -- 20
+write$ -- 163

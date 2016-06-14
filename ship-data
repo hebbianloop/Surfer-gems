@@ -1,0 +1,70 @@
+#!/bin/bash
+#  Use the rsync utility to synchronize two directories on different machines
+#
+#  TO DO:
+#           ** create usage description with help option
+
+#DEFAULT ARGS
+# Defualt Arguments
+hname=$(hostname)
+mach=$(machine)
+me=$(whoami)
+d=$(date)
+
+datasource="$1"
+destination="$2"
+
+if [ $# -ne 2 ]; then
+cat <<EOD
+
+${0##*/} - A wrapper for the rsync function to quickly sync large data directories.
+
+	Usage   :: ${0##*/} DATASOURCE DESTINATIONFOLDER
+
+	Example :: ship-data ~/mydata ~/projectfolder
+
+	Extra Info ::
+
+		!! the datasource will be placed inside the project folder
+
+		!! If the project folder contains a directory with the same
+	   	name as the data source, then the folder will not be
+	   	overwritten but rater updated.  Only newer files will be
+	   	kept.  Older files are overwritten.
+
+		!! Do not use slashes at the end of directory paths
+
+		!! sync information is written to shipping.log, a file
+		located in the project folder
+
+EOD
+exit
+fi
+
+echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'
+echo -e "\nSHIPPING DATA  ::   $d \n\n"
+echo 'User: ' $me
+echo 'Host: ' $hname-$mach
+echo '' 
+echo 'Source Data:' $datasource
+echo 'Destination:' $destination
+echo ''
+echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'
+
+# sync source to destination
+rsync -azvu --stats --log-file=$destination/shipping.log $datasource $destination
+echo ' *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * '
+echo ' *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * '
+echo ''
+echo -e '\t\t\t\t Synchronization Complete :)\n'
+echo 'Please see shipping.log in the destination folder for details'
+echo ''
+echo ' *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * '
+echo ' *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * '
+cfmi-splash
+
+#  ship-data.sh
+#
+#
+#  Created by Shady El Damaty on 11/8/15.
+#

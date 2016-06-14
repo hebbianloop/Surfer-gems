@@ -1,0 +1,5 @@
+mghRead(/Users/shadyeldamaty/Dropbox/Projects/ADS/data/ads.subjects/mri/orig.mgz, -1): could not open file
+mghRead(/Users/shadyeldamaty/Dropbox/Projects/ADS/data/ads.subjects/mri/wm.mgz, -1): could not open file
+mghRead(/Users/shadyeldamaty/Dropbox/Projects/ADS/data/ads.subjects/mri/brainmask.mgz, -1): could not open file
+mghRead(/Users/shadyeldamaty/Dropbox/Projects/ADS/data/ads.subjects/mri/orig.mgz, -1): could not open file
+mghRead(/Users/shadyeldamaty/Dropbox/Projects/ADS/data/ads.subjects/mri/orig.mgz, -1): could not open file

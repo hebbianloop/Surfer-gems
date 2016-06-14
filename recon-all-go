@@ -1,0 +1,412 @@
+#!/bin/bash
+#  Import data and run recon-all on specified subject list
+#   -- User should input the project directory, wave (wave1, wave2, wave3) and subject list file to process
+#   -- The script outputs a log file in the working directory indicating progress
+#   -- Note that this script imports all NIFTI images in a subjects raw data directory, be sure to delete any images that you do not want to be processed before running this script!
+#   -- Each separate scan for each subject should be labeled in a separate folder. The name of these folders doesn't matter (should be consistent though).
+#   -- The name of each scan MUST begin with 'Anat' followed by a wildcard and a '.img' extension.
+#   -- This code only supports import of .img files
+#   -- if subject file is does not already exist, then the script will create a subject list file with the input name with all subjects under ./data/Subjects/$subwave
+# ------------------------------------------------------------------------------------------------------------
+# Default Arguments
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+binpth="$usrpth/bin/"
+cd $usrpth
+d=$(date)
+
+s=$(date -u "+%s")                              # time the script
+
+projdir="$usrpth/Projects/ADS/data"             # path to where subjects processed data will ultimately live
+subdir='ads.subjects'                           # name of folder where subject data will live
+group='w1'                                      # group name, can be empty
+rawdatadir='raw'                                # name of directory in project directory where raw data live
+subsfile=$group'.subjects.list'                        # what to call list of subjects
+rawformat='.img'                                # format of raw data
+tempdir="$usrpth/ads.subjects"
+# ------------------------------------------------------------------------------------------------------------
+# Help Function
+show_help() {
+    cat <<EOF
+    Usage ${0##*/} [-h|--help] [-pd|--projectdir PATH] [-sd|--subjectdir PATH] [-rd--rawdatadir PATH] ...
+                                [-rf|--rawformat STRING] [-s|--subjlist FILE] [-g|--group STRING] ...
+                                [--localrun] [-td|--tempdir] 
+    
+    Runs recon-all for a batch of subjects. Supports grouping of subjects for different treatments or time points.
+    Implements a lockfile method to allow multiple invokations (i.e. running this script in parallel).
+
+    Options :: 
+    -h  --help           displays help
+    -pd --projectdir     local path to where the subjects directory will live in
+    -sd --subjectdir     output will go here, constructed as a subdirectory in projectdir
+    -rd --rawdatadir     name of subfolder in projectdir with raw images for all subjects
+    -rf --rawformat      image format (.nii/.img/.nii.gz)
+    -s  --subjlist       name of subject list to run reconstruction on
+    -g  --group          grouping flag for subjects
+
+    Special Options :: 
+    --localrun           use this to run on user specified subjects directory (for local runs)
+    -td --tempdir        user specified subjects directory, usually a non-network mounted filesystem
+
+    Example :: 
+
+        The following call assumes the existence of a project directory: /Volumes/CFMI/FreeSurfer/data.
+            This directory is further assumed to contain:
+                                                            ./ads.subjects
+                                                            ./ads.subjects/subjects.list
+                                                            ./raw/w1/<subjid>/Anat*/Anat*.img
+
+            recon-all-go -pd /Volumes/CFMI/FreeSurfer/data -sd ads.subjects -rd raw -rf .img -g w1 -s subjects
+
+    Default behavior ::  
+
+        The script assumes raw file format of .img.  Creates a subject list if it does not already exist based
+        on the directory names in the raw subject directory.  No grouping variable is defined. List of completed
+        subjects are output to the subject directory.  Will not run if necessary paths are not detected.
+
+    IMPORTANT!
+
+    * The grouping variable must exist as a folder name in the raw data directory
+            i.e. the following must exist for the option -g group1  : 
+            
+            ~/Projects/ADS/data/raw/group1
+
+    * Assumes raw data for MPRAGE scans are stored in a folder containing the regular expression 'Anat*'
+        -- Make sure you store the MPRAGES for your raw data using this naming convention
+            i.e.) ~/Projects/ADS/data/raw/group1/SUBJECT001/Anat*/Anat*.img
+            
+            (note * is wildcard)
+
+    * Can handle multiple raw MPRAGE scans. However this means you must make sure to only include those
+      scans in your raw data directory that pass quality control.  Multiple MPRAGE acquisitions are averaged 
+      together to create a high quality image.  Thus the quality of the final image can be impaired if 
+      bad scans are not initially removed.
+
+
+EOF
+}
+# ------------------------------------------------------------------------------------------------------------
+# Option Parsing
+while :; do
+    case $1 in
+        -h|--help)
+        show_help
+        exit 
+        ;;
+        --localrun)
+        localrun="ヾ(⌐■_■)ノ♪"
+        ;;        
+        -td|--tempdir)
+            if [ -n "$2" ]; then
+                tempdir=$2
+                shift
+            else
+                echo "ERROR:  -td --tempdir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;        
+        -pd|--projectdir)
+            if [ -n "$2" ]; then
+                projdir=$2
+                shift
+            else
+                echo "ERROR:  -pd --projectdir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -sd|--subjectdir)
+            if [ -n "$2" ]; then
+                subdir=$2
+                shift
+            else
+                echo "ERROR:  -sd --subjectdir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -rd|--rawdatadir)
+            if [ -n "$2" ]; then
+                rawdatadir=$2
+                shift
+            else
+                echo "ERROR:  -rd --rawdatadir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -rf|--rawformat)
+            if [ -n "$2" ]; then
+                rawformat=$2
+                shift
+            else
+                echo "ERROR:  -rf --rawdformat requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;                          
+        -s|--subjlist)
+            if [ -n "$2" ]; then
+                subsfile=$2
+                shift
+            else
+                echo "ERROR:  -s --subjlist requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -g|--group)
+            if [ -n "$2" ]; then
+                group=$2
+                shift
+            else
+                echo "ERROR:  -g --group requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+# Update default arguments  -- we build in this way to include complete path to name
+subdir=$projdir'/'$subdir
+subsfilename=$subsfile
+subsfile=$subdir'/'$subsfilename
+rawdatadir=$projdir'/'$rawdatadir'/'$group
+# ------------------------------------------------------------------------------------------------------------
+# Output variables to terminal
+#  -- Note that the wave and subsfile have to be matching!
+cfmi-splash
+cat <<EOF
+--------------------------------------------------------------------------------------------------------------
+
+recon-all-go was invoked by  :   $me   on   $d   with the following options:
+
+
+PROJECT DIRECTORY                   =  $projdir
+SUBJECT GROUP                       =  $group
+SUBJECT DIRECTORY                   =  $subdir
+RAW DATA DIRECTORY                  =  $rawdatadir
+RAW DATA FORMAT                     =  $rawformat
+SUBJECT LIST FILE                   =  $subsfile
+LOCAL RUN?                          =  $localrun
+
+ *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+ *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+
+EOF
+# Todo -- check all of the inputs
+if [ ! -d $projdir ]; then
+    echo "ERROR! Path to Project Directory Could Not Be Found"
+    exit 
+elif [ ! -d $subdir ]; then
+    echo "ERROR! Path to Subject Directory Could Not Be Found"
+    exit 
+elif [ ! -d $rawdatadir ]; then
+    echo "ERROR! Path to Raw Data Directory Could Not Be Found"
+    exit 
+elif [ ! $subdir = $SUBJECTS_DIR ]; then
+    echo "Subjects Directory does not match Freesurfer \$SUBJECTS_DIR: $SUBJECTS_DIR"
+    echo " ....setting \$SUBJECTS_DIR to specified subject directory"
+    SUBJECTS_DIR=$subdir
+elif [ ! -d $tempdir ]    ; then
+    echo "Creating Temproary Directory for Local Run"
+    mkdir -p $tempdir
+fi
+# ------------------------------------------------------------------------------------------------------------
+# Check for and read subject list
+if [ -f $subsfile ]; then
+    echo 'Reading List of Subjects: ' $subsfile
+    echo ' . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . '
+    subs=$(cat $subsfile)
+    echo 'The following Subjects will be loaded:  '
+    echo $subs
+else
+    echo -e '** No List of Subjects Found!\n'
+    echo -e '** Loading All Subjects in Raw Data Directory: ' $rawdatadir'\n'
+    echo -e '** List of Subjects with Raw Data: ' $subsfile'\n'
+    # the following line needs to be generalized
+    touch $subsfile
+    ls $rawdatadir > $subsfile
+    subs=$(cat $subsfile)
+    echo 'The following Subjects will be loaded:  '
+    echo "$subs"
+fi
+cat <<EOF
+
+*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+EOF
+# ------------------------------------------------------------------------------------------------------------
+# Import Data and Create Subject Data Directory
+for k in $subs; do
+    if [ -z $group ]; then
+        substr=$k
+    else
+        substr=$k'-'$group
+    fi       
+    if [ ! -d $reconstr ]; then
+        # Check to see if more than one MPRAGE exists
+        echo -e "\nImporting Data for Subject: $k"
+        echo '----------------------------------------'
+        anats="$(ls $rawdatadir/$k/ | grep -e 'Anat*')"
+        echo -e "\nThe following Anatomical Scans were found: \n$anats\n"
+        # Build string for multiple raw data images!
+        reconstr=''
+        for a in $anats; do
+	       # SED Added this line 20 Nov 15 - can now handle multiple Anat*.img in a single folder
+            imgs=$(ls $rawdatadir/$k/$a/Anat*$rawformat)  # added 2 Feb 16 - $rawformat to support multiple image types
+	       printf -v str " -i %s " $imgs                  # printf is awesome! makes a string for each element in $imgs
+            reconstr=$reconstr' '$str                      # then we concatenate them for each folder, yay generalizability!
+        done
+        # import data
+	       echo 'Importing Data: recon-all -s '$substr$reconstr 
+    else        
+        # Subject Data Already Exists
+        echo -e "\n Data Already Imported: $substr"
+        echo -e '----------------------------------------\n'
+    fi
+done
+# ------------------------------------------------------------------------------------------------------------
+cat <<EOF
+* * * * * * * * * * *                    Data Import to Freesurfer Completed               * * * * * * * * * * *
+
+
+
+                                                     hammer time!
+
+                                                     ヾ(⌐■_■)ノ♪
+
+
+                                            ready to run: recon-all -all
+
+                                                      ᕙ(⇀‸↼‶)ᕗ 
+
+*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *  *  *  *  *
+EOF
+# ------------------------------------------------------------------------------------------------------------
+# RUN RECON-ALL
+cat <<EOF
+
+ ■ The following subjects will be reconstructed with Freesurfer:
+
+$subs
+_________________________________________________________________________________________________________________
+EOF
+# Check for a completed subjects list and make one if it doesn't exist yet
+completedsubsfile=$subdir/'completed.recon-all.'$subsfilename
+if [ ! -f  $completedsubsfile ]; then
+    echo -e '\n\n* * *\n\nRecon-all has not been run yet with this list of subjects\n\n* * *\n'
+    echo "Creating Completed Subjects List: $completedsubsfile"
+    touch $completedsubsfile
+else
+    echo -e '\n\n!!! Recon-all has been previously run on this subject list\n\n'
+    echo "LIST OF COMPLETED SUBJECTS: $completedsubsfile\n"
+    cat $completedsubsfile
+fi
+# Loop through subject list and only process those that are not running or those that have not been run yet
+for k in $subs; do
+    echo -e '\nEVALUATING:  '$k
+    # Make sure subject hasn't  been run already
+    checksub=$(awk /$k/ $completedsubsfile | cut -f 1 -d' ')
+    if [ -z $checksub ]; then
+	   echo '** Subject has not completed recon-all stream'
+       #Check if subject is already running
+       LOCK=$subdir'/.'$k'.recon-all-go.lock'
+        if [ -f $LOCK ]; then
+           echo -e '! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !'
+           echo -e $k 'is already running, skipping to next subject'
+           echo -e '! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !\n'
+        else
+            echo -e '** Beginning unique run for ' $k'\n'
+            echo -e '* \tLocking File: \n' $LOCK
+            # Make a lock file
+            touch $LOCK
+            #begin timer
+            START=$(date -u "+%s")
+            # If user wants to run recon-all on local disk and not on a network drive...
+            if [ $localrun ]; then
+                echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
+                echo -e "Performing local run . . . . . . .\n"
+                echo -e "TEMPORARY DIRECTORY:  \t\t$tempdir\n"
+                echo -e "SUBJECT DATA: \t\t$subdir/$k-$group"
+                echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
+                # Copy the subject data folder to a temporary directory on the local machine
+                dontforget=$SUBJECTS_DIR
+                if [ ! -d $tempdir/$k'-'$group ]; then
+                    cp -rv $subdir/$k'-'$group $tempdir/
+                fi    
+                # Set the SUBJECTS_DIR environmental variable to the temporary directory
+                SUBJECTS_DIR=$tempdir
+                echo -e "!! SUBJECTS DIRECTORY SET TO TEMP:  $SUBJECTS_DIR"
+            fi
+            # Now run recon-all 
+            if [ -z $group ]; then
+                reconstr=$k
+            else
+                reconstr=$k'-'$group
+            fi    
+            #if [ $reconswitch = '']
+            #recon-all -autorecon
+            recon-all -all -s $reconstr -no-isrunning -qcache
+            # Set things back to normal and transfer data back to server
+            if [ $localrun ]; then
+                echo "COPYING DATA BACK TO SERVER!"
+                SUBJECTS_DIR=$dontforget
+                cp -rv $tempdir/$k'-'$group $SUBJECTS_DIR/
+                echo "SUBJECTS DIRECTORY RESET:  $SUBJECTS_DIR"
+                echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
+            fi
+            END=$(date -u "+%s")
+            DIFF=$((END-START))
+            #When did each subject finish and how long did it take?
+            echo $k $(date) "$(($DIFF / 3600)) hours $(($DIFF %3600 / 60)) minutes and $(($DIFF % 60)) seconds elapsed."  $me >> $subdir'/completed_subjects.recon-all.'$subsfilename
+            #Let user know
+            echo 'Finished Subject' $k "- - - - $(($DIFF / 3600)) hours"
+            echo -e 'Removing Lock\n'
+            rm $LOCK
+        fi
+    else
+        echo ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "
+        echo "Skipping Subject $k! (Already Procesed)"
+        echo -e ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . \n"
+    fi
+       echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'
+done
+# End Timer
+e=$(date -u "+%s")
+d=$((e-s))
+cat <<EOF
+
+                                    (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ ✧ﾟ･: *ヽ(◕ヮ◕ヽ)
+
+                                        RECON-ALL COMPLETE
+
+                                    $(date)
+        
+                            $(($d / 3600)) hours $(($d %3600 / 60)) minutes and $(($d % 60)) seconds elapsed
+
+        ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ
+
+EOF
+cfmi-splash
+#  recon-all-go.sh
+#  
+#
+#  Created by Shady El Damaty on 11/2/15.
+#                       EDITS: 8 Nov 2015 - added lock file to prevent two subjects from being processed at same time
+#                                         - added completed subjects list output with time to completion
+#                                         - allowed subject names without wave indicator (better way to do this?)
+#                                         - added check for completed subject
+#                       EDITS: 9 Nov 2015 - debugged counter
+#                                         - added timer for entire script
+#                             20 Nov 2015 - major rewrite.  generalized code beyond waves, now looks at user group - not wave
+#                                         - generalized retrieval of Anat-*.img to include any number of scans in directory
+#                              2 Feb 2016 - another major rewrite! support for different image types (user input)
+#                                         - new and improved option parsing with help function
+#                                         - new strings for printing to screen
+#                                         - changed how default variables are allocated and called in script  
+#                                         - fixed bugs with directory paths (missing '/')                                        
+#                                         - checks that all necessary paths exist before beginning recon-all
