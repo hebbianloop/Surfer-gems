@@ -1,0 +1,127 @@
+#/bin/bash
+# Extract Batch Data
+# ------------------------------------------------------------------------------------------------------------
+# Default Arguments
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+binpth="$usrpth/bin/"
+cd $usrpth
+
+hname=$(hostname)
+mach=$(machine)
+dte=$(date)
+
+d="/exports/home/$me/ADS/data/ads.rest"
+f='nextract.list'
+t="MPRAGE rest"
+ra="Anat Rest"
+# ------------------------------------------------------------------------------------------------------------
+# Help Function
+show_help() {
+    cat <<EOF
+    Usage ${0##*/} [-h|--help] [-d|--datadir PATH] [-f|--file FILE] [-t|--tasks STRING] [-ra|--renameas STRING] 
+    
+    Run nextractomatic in batch for the subjects listed in column 1 of FILE and outputs images organized by subject
+    and RENAMEAS in DATADIR.  FILE should contain 3 columns.  The other two columns should contain minimum and maximum
+    dates for the subject's desired scan, respectively.  TASKS is the name of the series as listed in the description
+    on the mysql dicom server.
+
+    Options :: 
+    -h  --help           displays help
+    -d --datadir     	 directory path to store data by subject and task
+    -f  --file 		     name of file in datadir with 3 columns (subjects, datemin, datemax in YYYY-MM-DD format)
+    -t  --tasks 	     list of tasks to extract data for (series description)
+    -ra --renameas 	     prefix for renaming task scans
+
+    Example :: 
+
+    ${0##*/} -d /exports/home/$me/ADS/data/raw/w1 -f nextract.list -t "MPRAGE Rest" -ra "Anat Rest"
+
+EOF
+}
+# ------------------------------------------------------------------------------------------------------------
+# Option Parsing
+while :; do
+    case $1 in
+        -h|--help)
+        show_help
+        exit 
+        ;;
+        -d|--datadir)
+            if [ -n "$2" ]; then
+                d=$2
+                shift
+            else
+                echo "ERROR:  -d --datadir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -f|--file)
+            if [ -n "$2" ]; then
+                f=$2
+                shift
+            else
+                echo "ERROR:  -f --file requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -t|--tasks)
+            if [ -n "$2" ]; then
+                t=$2
+                shift
+            else
+                echo "ERROR:  -t --tasks requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -ra|--renameas)
+            if [ -n "$2" ]; then
+                ra=$2
+                shift
+            else
+                echo "ERROR:  -ra --renameas requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;          
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+# ------------------------------------------------------------------------------------------------------------
+# Display Inputs
+cat <<EOD
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+NEXTRACT BATCH INPUTS       ::	$me  -  $dte  -  $hname$mach
+
+    data directory          ::      $d
+    meta data file          ::      $f
+    tasks to extract        ::      $t
+    rename as               ::      $ra
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+EOD
+# ------------------------------------------------------------------------------------------------------------
+# Get Meta Data For Extraction
+echo -e "Extracting Subject IDS, Minimum Dates and Maximum Dates from $f..\n"
+subjects=$(awk '{print $1}' $d/$f)
+mindate=($(awk '{print $2}' $d/$f))
+maxdate=($(awk '{print $3}' $d/$f))
+# ------------------------------------------------------------------------------------------------------------
+# Run Batch
+echo -e "\nRunning batch with extracted info "
+counter=0
+for s in $subjects; do
+	echo -e "\nSubject :: $s\n\n"
+	echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'
+	nextractomatic -r "$d" -s "$s" -t "$t" -ra "$ra" -dm ${mindate[$counter]} -dx ${maxdate[$counter]}
+	counter=$((counter+1))
+	echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'
+done
