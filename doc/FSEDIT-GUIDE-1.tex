@@ -34,7 +34,7 @@
 \lstset{language=BASH}
 \usepackage{xcolor}
 \usepackage{graphicx}
-\graphicspath{ {../images/} }
+\graphicspath{ {./images/} }
 \usepackage[toc,page]{appendix}
 
 \usepackage{color}
@@ -58,7 +58,7 @@
   keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
   keywordstyle=\color{purple},       % keyword style
   language=bash,                 % the language of the code
-  otherkeywords={*,emacs,sudo, tkmedit, recon-all, freeview, ls, recon-all-go, ship-data, mv, cp, date, touch},           % if you want to add more keywords to the set
+  otherkeywords={*,emacs,sudo, tkmedit, recon-all, freeview, ls, recon-all-go, ship-data, mv, cp, date, touch, FS-stats, FSQC-check, FSQC-makehtml, FSQC-summary, nextract.batch, nextractomatic, git, clone},           % if you want to add more keywords to the set
   numbers=none,                    % where to put the line-numbers; possible values are (none, left, right)
   numbersep=5pt,                   % how far the line-numbers are from the code
   numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
@@ -116,6 +116,7 @@
 
 \maketitle % Print the title
 
+\lstset{escapechar=\@} % escape lstlisting
 %----------------------------------------------------------------------------------------
 % INTRO
 \section{Introduction}  \href{https://surfer.nmr.mgh.harvard.edu/}{Freesurfer} (FS) is a powerful (and freely available!) software package developed at the Martinos Center for Biomedical Imaging for automatized analyses of brain anatomy.  A non-inclusive list of its capabilities includes:
@@ -192,7 +193,7 @@ SUBJECTS_DIR="/exports/home/<cfmiuser>/ADS/ads.subjects"
 \\~ \\~
 \item When it is emailed to you, use \texttt{emacs} to create a license file then copy and paste in the key. You will need an administrator password for this since you must use super-user do:
 \begin{lstlisting}[frame=single]
-sudo emacs /Applications/freesurfer.license
+sudo emacs /Applications/freesurfer/.license
 \end{lstlisting}  
 
 \item IMPORTANT: be sure to source your \texttt{.bash\_profile} so you can use FS at the terminal
@@ -209,25 +210,82 @@ tkmedit $FREESURFER_HOME/subjects/bert orig.mgz
 %------------------------------------------------
 % RECON ALL QUICK START
 \section{Reconstruct them all!}
-\subsection{Quick-Start Tutorial} The most attractive feature of  FS is that it makes cortical surface reconstruction and subcortical segmentation for a single subject as easy as typing in a single command and coming back the next day to check your results.  Once the environment for FS has been set, you are ready to analyze your first subject.  First you must import the raw image files to your \texttt{SUBJECTS\_DIR} by typing the following into a terminal:
-\begin{lstlisting}[frame=single, xrightmargin=0cm]
-recon-all -s <subjectname> -i <pathtorawdata1.img> \
-			                     -i <pathtorawdata2.img>
-\end{lstlisting}
-
-~\\
-At the CFMI, the original \texttt{.IMA} DICOM files are usually downloaded or copied from the raw data directory on the server and converted to \texttt{.nii} or \texttt{.img/.hdr}.  Software such as \href{http://neuro.debian.net/pkgs/mriconvert.html}{MRICONVERT} or \href{http://www.mccauslandcenter.sc.edu/mricro/mricron/}{MRICRON} can be used for this purpose.  A pre-existing script for performing automatic conversion and data duplication can be found at \texttt{/glusterfs/mirror/cfmi/cfmi4/apps/scripts/extractomatic.sh}.   Here is an example call of this script:
+\subsection{Quick-Start Tutorial} The most attractive feature of  FS is that it makes cortical surface reconstruction and subcortical segmentation for a single subject as easy as typing in a single command and coming back the next day to check your results.  To get started, you must set up your environment and import your imaging data.
+\paragraph{Environment Setup}You may clone a repository containing all of the tools you will require for this tutorial by typing the following into a terminal window
 
 \begin{lstlisting}
-/exports/cfmi4/apps/scripts/extractomatic.sh \
-																Long \											# Unique descriptor of project
-																2012-01-01 2013-01-01 \			# Date range of scans to extract
-																"WoF1 WoF2 WoF3 MPRAGE" \		# Scan names to extract
-																"WoF1 WoF2 WoF3 Anat"				# New names for scans
+cd ~
+git clone https://@git@hub.com/seldamat/Surfer-gems.@git
 \end{lstlisting}
-Sometimes pre-existing data may have already been converted and stored in a central project directory on the server.  If this is the case, it is more efficient to copy the data over to your own local user project directory, perform your analyses then ship the data back to the central project directory.  To accomplish this, you can use the script \href{https://www.dropbox.com/s/urbov04xu7qg31b/ship-data.sh?dl=0}{\texttt{ship-data.sh}}.
-\newpage
-After importing your raw data using the \texttt{recon-all} command above, take a look in SUBJECTS\_DIR and you should see a folder for the subject with the following directories:
+
+~\\The \texttt{ls} command can be used to view the contents of this repository
+
+\begin{lstlisting}
+ls ~/Surfer-gems
+@FS-stats @
+@FSQC-check@
+@FSQC-makehtml@
+@FSQC-summary@
+@README.md@
+@doc@
+@nextract.batch@
+@nextractomatic@
+@recon-all-go@
+@ship-data@
+\end{lstlisting}
+
+~\\General information about the repository can be found within the \texttt{README} file.  The \texttt{doc} directory contains the \LaTeX\  files used to generate this document.  Note that this repository is updated frequently.  The \href{http://rogerdudler.github.io/git-guide/}{git command line tool} can keep you up to date with the newest versions.
+
+~\\Usage information about any of the programs can be obtained by calling the program by name with an appended \texttt{-h} option.  For example,
+
+\begin{lstlisting}
+cd ~/Surfer-gems
+ship-data -h
+
+@ship-data@ - A wrapper @for@ the rsync @function@ to quickly sync large data directories.
+
+	Usage   :: @ship-data@ DATASOURCE DESTINATIONFOLDER
+
+	Example :: @ship-data@ ~/mydata ~/projectfolder
+
+	Extra Info ::
+
+		!! the datasource will be placed inside the project folder
+
+		!! If the project folder contains a directory with the same
+	   	name as the data @source@, @then@ the folder will not be
+	   	overwritten but rater up@date@d.  Only newer files will be
+	   	kept.  Older files are overwritten.
+
+		!! Do not use slashes at the end of directory paths
+
+		!! sync information is written to shipping.log, a file
+		located @in@ the project folder
+\end{lstlisting}
+
+\paragraph{Importing Raw Data} At the CFMI, the original \texttt{.IMA} DICOM files are usually downloaded or copied from the raw data directory on the server and converted to \texttt{.nii} or \texttt{.img/.hdr}.  A program for performing automatic conversion and data duplication can be found at \mbox{\texttt{\textasciitilde/Surfer-gems/nextractomatic}}.   This program uses the \texttt{dcm2niix} conversion software and is written specifically to handle the CFMI mySQL database. Software such as \href{http://neuro.debian.net/pkgs/mriconvert.html}{MRICONVERT} or \href{http://www.mccauslandcenter.sc.edu/mricro/mricron/}{MRICRON} may also be used for this purpose.  An example call of \texttt{nextractomatic} appears below
+
+\begin{lstlisting}
+nextractomatic \
+		-r /exports/home/se394/ADS/data/raw/w1 \	# Path to raw dicom .IMA data
+		-s "149959" \															# Subject ID
+		-dm 2012-6-14 -dx 2012-6-15 \							# Date range of scans to extract
+		-rf .nii \																# Conversion format
+		-t "MPRAGE Rest" \ 												# Scan names to extract
+		-ra "Anat Rest"													# New names for scans
+\end{lstlisting}
+
+~\\Sometimes pre-existing data may have already been converted and stored in a central project directory on the server.  If this is the case, it is more efficient to copy the data over to your own local user project directory, perform your analyses then ship the data back to the central project directory.  To accomplish this, you can use the \texttt{ship-data} program found within the \texttt{Surfer-gems} repository.
+
+~\\ \\ Once the environment for FS has been set, you are ready to analyze your first subject.  First you must import the raw image files to your \texttt{SUBJECTS\_DIR} by typing the following into a terminal:
+\begin{lstlisting}[frame=single, xrightmargin=0cm]
+recon-all -s <subjectname> -i <pathtorawdata1.nii> \
+			                     -i <pathtorawdata2.nii>
+\end{lstlisting}
+
+~\\The \texttt{-i} option copies the raw image files after they have been converted to \texttt{NIFTI} to the directory structure required for running the \texttt{recon-all} command.  Multiple input images can be specified if more than one run exists for a given subject.  These runs are averaged together to generate cleaner images.
+
+~\\After importing your data to the FreeSurfer directory structure, take a look in \texttt{SUBJECTS\_DIR} and you should see a folder for the subject with the following directories:
 \begin{lstlisting}[frame=single]
 ls $SUBJECTS_DIR/<subjectname>
 bem
@@ -238,15 +296,15 @@ src
 stats
 surf
 temp
-touch
+@touch@
 trash
 \end{lstlisting}
-We will explain the purpose of some of these folders later.  For now, you can view the original raw mri by typing:
+We will explain the purpose of some of these folders later.  For now, you can view the original raw mri
 \begin{lstlisting}[frame=single]
 tkmedit <subjectname> orig/001.mgz
 \end{lstlisting}
 ~\\
-Now that the subject is imported, we can begin the processing stream by typing:
+Once it is confirmed that the subject has been successfully imported, we can begin the processing stream
 \begin{lstlisting}[frame=single]
 recon-all -s <subjectname> -all
 \end{lstlisting}
@@ -263,7 +321,7 @@ The problem becomes much more complicated when multiple users are running \textt
 These considerations are implemented in the batch processing script \href{https://www.dropbox.com/s/j7zmp29bkdeg9h5/recon-all-go.sh?dl=0}{\texttt{recon-all-go.sh}}.  This script requires a project directory, subjects directory, list of subjects, and subject wave as input.  The subject wave is null,'', by default (i.e. if not provided). For example:
 
 \begin{lstlisting}
-. recon-all-go.sh -pd /exports/home/<cfmiuser>/Projects/ADS/ -s analysis.1.subject.list
+. recon-all-go -pd /exports/home/<cfmiuser>/Projects/ADS/ -s analysis.1.subject.list
 \end{lstlisting}
 
 Be sure to only include the subjects you would like to process in the raw data directory because the script processes the entire contents of that folder. Note that the name of each scan \textit{must} begin with \texttt{'Anat'} followed by a wildcard (\texttt{*}) and a \texttt{.img} file extension. If a subject list file does not already exist, then the script will create it with the \texttt{-s} input using all subjects under \texttt{./data/Subjects/\$subwave}. Note again that by default \texttt{\$subwave=''}. This means the script assumes every subdirectory under 
