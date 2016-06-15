@@ -3,7 +3,8 @@
 # 💎🏄 Surfer-gems 
 A collection of tools for automating routine tasks &amp; performing analysis with the FreeSurfer software package.
 ## Installation
-Simply clone this repository, and either copy them to your user bin folder or add the repo to your shell path.
+Simply clone this repository and add it to your bash path by including the following line your '.bash_profile'
+> 'export PATH="PATHTOSURFERGEMS/:$PATH"'
 ## Contents
 - FS-stats       -- Generates concatenated tables of morphometry statistics across FreeSurfer processed subjects
 - FSQC-summary   -- Generates QC data for a single subject.
