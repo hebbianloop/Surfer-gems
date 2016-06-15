@@ -11,11 +11,11 @@ Simply clone this repository and add it to your bash path by including the follo
 - `FSQC-summary`   -- Generates QC data for a single subject.
 - `FSQC-check`     -- Generates QC data for a list of subjects and writes a list of subjects with failed analyses.  
 - `FSQC-makehtml`  -- Generate webpage with screenshots of final subject reconstructions
-- doc            -- LaTeX folder for FreeSurfer documentation
 - `nextractomatic` -- DICOM extraction & conversion using dcm2niix @ CFMI (single subject)
 - `nextract.batch` -- Batch DICOM extraction & conversion using dcm2niix
 - `recon-all-go`   -- Serial script for batch FreeSurfer processing
 - `ship-data`      -- Wrapper for rsync function
+- doc            -- LaTeX folder for FreeSurfer documentation
 
 ## History
 A more complete version history can be found at www.github.com/seldamat/SNIR.  All of these executables were copied from the SNIR repo and consolidated into a FreeSurfer specific repository.  The developer has committed to updating this repository first for the included software and documentation.
