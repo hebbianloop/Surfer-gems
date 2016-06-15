@@ -58,7 +58,7 @@
   keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
   keywordstyle=\color{purple},       % keyword style
   language=bash,                 % the language of the code
-  otherkeywords={*,emacs,sudo, tkmedit, recon-all, freeview, ls, recon-all-go, ship-data, mv, cp, date, touch, FS-stats, FSQC-check, FSQC-makehtml, FSQC-summary, nextract.batch, nextractomatic, git, clone},           % if you want to add more keywords to the set
+  otherkeywords={emacs,sudo, tkmedit, recon-all, freeview, ls, recon-all-go, ship-data, mv, cp, date, touch, FS-stats, FSQC-check, FSQC-makehtml, FSQC-summary, nextract.batch, nextractomatic, git, clone, brew, install, parallel, rm},           % if you want to add more keywords to the set
   numbers=none,                    % where to put the line-numbers; possible values are (none, left, right)
   numbersep=5pt,                   % how far the line-numbers are from the code
   numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
@@ -110,7 +110,7 @@
 
 \author{Made for CFMI training} % Your name
 
-\date{\normalsize 4 November 2015} % Today's date or a custom date
+\date{\normalsize 4 November 2015\\\textit{(updated 15 June 2016)}} % Today's date or a custom date
 
 \begin{document}
 
@@ -137,7 +137,7 @@ The materials presented here are collected from miscellaneous notes taken from t
 \subsection{Background}
 \paragraph{Cortical Surface Reconstruction} FS initially emerged from efforts to constrain the \href{http://www.scholarpedia.org/article/Source_localization}{inverse problem for EEG/MEG source localization} using anatomically accurate cortical surface models \cite{dale_improved_1993}.  Dale \& Sereno's major innovation was to use the gray/white boundary instead of the pial surface to reconstruct the cortex -- effectively curtailing the challenge of conforming a continuous spherical surface to a highly irregular and non-continuous cortical surface.  However, these early attempts did not produce accurate surface models and required extensive user intervention to correct topological defects. The accuracy of surface deformation techniques is constrained by three considerations:
 \begin{enumerate}
-\item \textbf{Iso-Intensity Surfaces} -- the assumption that the MRI intensity of gray/white and pial surfaces are constant. However, this assumption is not accurate. Cortical tissue varies in micro anatomy and thus the signal intensity is quite variable across cortex.  For example, myelin-rich regions will appear much brighter than myelin-poor regions.
+\item \textbf{Iso-Intensity Surfaces} -- the assumption that the MRI intensity of gray/white and pial surfaces are constant. However, this assumption is not accurate. Cortical tissue varies in microanatomy and thus the signal intensity is quite variable across cortex.  For example, myelin-rich regions will appear much brighter than myelin-poor regions.
 \item \textbf{Topological Constraints} -- surfaces must be constrained to not self intersect.  This problem is made exceptionally difficult since the cortex is tightly packed making the demarcation between adjacent sulcal banks a hard computational problem for planar Eulerian methods.
 \item \textbf{Curvature minimization} -- smooth surfaces are generated through curvature minimization, however cortex contains many regions with high curvature.
 \end{enumerate}
@@ -211,7 +211,7 @@ tkmedit $FREESURFER_HOME/subjects/bert orig.mgz
 % RECON ALL QUICK START
 \section{Reconstruct them all!}
 \subsection{Quick-Start Tutorial} The most attractive feature of  FS is that it makes cortical surface reconstruction and subcortical segmentation for a single subject as easy as typing in a single command and coming back the next day to check your results.  To get started, you must set up your environment and import your imaging data.
-\paragraph{Environment Setup}You may clone a repository containing all of the tools you will require for this tutorial by typing the following into a terminal window
+\paragraph{Environment Setup}You may \href{http://stackoverflow.com/questions/2916849/what-do-these-words-mean-in-git-repository-fork-branch-clone-track}{clone} a repository containing all of the tools you will require for this tutorial by typing the following into a terminal window
 
 \begin{lstlisting}
 cd ~
@@ -263,7 +263,11 @@ ship-data -h
 		located @in@ the project folder
 \end{lstlisting}
 
-\paragraph{Importing Raw Data} At the CFMI, the original \texttt{.IMA} DICOM files are usually downloaded or copied from the raw data directory on the server and converted to \texttt{.nii} or \texttt{.img/.hdr}.  A program for performing automatic conversion and data duplication can be found at \mbox{\texttt{\textasciitilde/Surfer-gems/nextractomatic}}.   This program uses the \texttt{dcm2niix} conversion software and is written specifically to handle the CFMI mySQL database. Software such as \href{http://neuro.debian.net/pkgs/mriconvert.html}{MRICONVERT} or \href{http://www.mccauslandcenter.sc.edu/mricro/mricron/}{MRICRON} may also be used for this purpose.  An example call of \texttt{nextractomatic} appears below
+\paragraph{Importing Raw Data} At the CFMI, the original \texttt{.IMA} DICOM files are usually downloaded or copied from the raw data directory on the server and converted to nifty (\texttt{.nii}) or analyze (\texttt{.img/.hdr}) format.  A program for performing automatic conversion and data duplication can be found at:
+\begin{lstlisting}
+~/Surfer-gems/nextractomatic
+\end{lstlisting}
+~\\This program uses the \texttt{dcm2niix} conversion software and is written specifically to handle the CFMI mySQL database. Software such as \href{http://neuro.debian.net/pkgs/mriconvert.html}{MRICONVERT} or \href{http://www.mccauslandcenter.sc.edu/mricro/mricron/}{MRICRON} may also be used for this purpose.  An example call of \texttt{nextractomatic} appears below,
 
 \begin{lstlisting}
 nextractomatic \
@@ -272,18 +276,18 @@ nextractomatic \
 		-dm 2012-6-14 -dx 2012-6-15 \							# Date range of scans to extract
 		-rf .nii \																# Conversion format
 		-t "MPRAGE Rest" \ 												# Scan names to extract
-		-ra "Anat Rest"													# New names for scans
+		-ra "Anat Rest"														# New names for scans
 \end{lstlisting}
 
 ~\\Sometimes pre-existing data may have already been converted and stored in a central project directory on the server.  If this is the case, it is more efficient to copy the data over to your own local user project directory, perform your analyses then ship the data back to the central project directory.  To accomplish this, you can use the \texttt{ship-data} program found within the \texttt{Surfer-gems} repository.
 
-~\\ \\ Once the environment for FS has been set, you are ready to analyze your first subject.  First you must import the raw image files to your \texttt{SUBJECTS\_DIR} by typing the following into a terminal:
+~\\ \\ Once the environment for FS has been set, you are ready to analyze your first subject.  First you must import the raw image files to your \texttt{SUBJECTS\_DIR} by typing the following into a terminal: \newpage
 \begin{lstlisting}[frame=single, xrightmargin=0cm]
 recon-all -s <subjectname> -i <pathtorawdata1.nii> \
 			                     -i <pathtorawdata2.nii>
 \end{lstlisting}
 
-~\\The \texttt{-i} option copies the raw image files after they have been converted to \texttt{NIFTI} to the directory structure required for running the \texttt{recon-all} command.  Multiple input images can be specified if more than one run exists for a given subject.  These runs are averaged together to generate cleaner images.
+~\\The \texttt{-i} option copies the raw image files to the directory structure required for running the \texttt{recon-all} command.  Multiple input images can be specified if more than one run exists for a given subject.  These runs can be averaged together to generate cleaner images.
 
 ~\\After importing your data to the FreeSurfer directory structure, take a look in \texttt{SUBJECTS\_DIR} and you should see a folder for the subject with the following directories:
 \begin{lstlisting}[frame=single]
@@ -314,30 +318,38 @@ The pre-processing can take up to 24 or as little as 4 hours depending on your m
 % BATCH PROCESSING
 \subsection{Batch Processing}
 Batches of subjects can be run by writing bash scripts to loop across a list of subjects, invoking recon-all for each one.  As previously mentioned, each individual subject can take up to 24 hours to complete reconstruction thus it is highly desirable to run your batches in parallel across as many nodes as possible.  A user can run as many recon-all sessions on a single system as there are processor cores or nodes on that system.  
-\paragraph{LockFiles \& Adaptive Iteration} One way to make parallel FS processing more efficient is to prevent different instances of \texttt{recon-all} from processing the same subject by using a lock-file.  The lock-file is a temporary file that is created as a particular subject is currently being processed so that any new invocations of \texttt{recon-all} know to move on to the next unprocessed subject.  
+\paragraph{LockFiles \& Adaptive Iteration} One way to make parallel FS processing more efficient is to prevent different instances of \texttt{recon-all} from processing the same subject by using a \href{http://docstore.mik.ua/orelly/unix3/upt/ch36_27.htm}{lock-file}.  The lock-file is a temporary file that is created as a particular subject is currently being processed so that any new invocations of \texttt{recon-all} know to move on to the next unprocessed subject.  
 
 The problem becomes much more complicated when multiple users are running \texttt{recon-all} with large subject databases hosted on a server.  In this instance, we avoid re-processing already completed subjects  by cross-checking each \texttt{recon-all} call with a list of completed subjects. In conjunction with a lock-file, this prevents different users from processing or re-processing the same subject.
 
-These considerations are implemented in the batch processing script \href{https://www.dropbox.com/s/j7zmp29bkdeg9h5/recon-all-go.sh?dl=0}{\texttt{recon-all-go.sh}}.  This script requires a project directory, subjects directory, list of subjects, and subject wave as input.  The subject wave is null,'', by default (i.e. if not provided). For example:
+\paragraph{Serial Iteration} These considerations are implemented in the batch processing program ~\\\texttt{recon-all-go}.  This executable requires a project directory, subjects directory, name of the raw data directory under the project directory, image format, subject grouping suffix as input and list of subjects.  The subject group is null,'', by default (i.e. if not provided). For example:
 
 \begin{lstlisting}
-. recon-all-go -pd /exports/home/<cfmiuser>/Projects/ADS/ -s analysis.1.subject.list
+recon-all-go -pd /Volumes/CFMI/FreeSurfer/data -sd ads.subjects -rd raw -rf .nii -g w1 -s subjects
 \end{lstlisting}
 
-Be sure to only include the subjects you would like to process in the raw data directory because the script processes the entire contents of that folder. Note that the name of each scan \textit{must} begin with \texttt{'Anat'} followed by a wildcard (\texttt{*}) and a \texttt{.img} file extension. If a subject list file does not already exist, then the script will create it with the \texttt{-s} input using all subjects under \texttt{./data/Subjects/\$subwave}. Note again that by default \texttt{\$subwave=''}. This means the script assumes every subdirectory under 
-\\ \texttt{./data/Subjects/} is a subject directory.  Indicate which subdirectory your subject data lives in using the \texttt{-w} flag. Lastly, make sure to copy the source data directory to your local home folder first before beginning analyses.  i.e)
+Be sure to inspect the program usage with the \texttt{-h} option before running your first batch with ~\\ \texttt{recon-all-go}.  This program will output each step of the reconstruction stream to the terminal and will append total run time and time of completion to a list in the subject directory.
+
+\paragraph{Parallel Iteration} If you have access to a multicore machine you may be interested in running many invocations  of\texttt{recon-all} at the same time.  A quick and dirty shortcut for parallelizing \texttt{recon-all} is to run the command in as many terminal prompts as there are processors.  Unfortunately, since the quick and dirty method parallelizes at the highest level, system resources are not efficiently utilized.  
+
+The \href{https://www.gnu.org/software/parallel/}{GNU parallel tool} is an excellent way for efficiently parallelizing any job on a Mac or Linux machine.  You can install this tool using the \href{http://brew.sh}{homebrew} package installer for OS X,
 \begin{lstlisting}
-. ship-data.sh -s /exports/processed/data/ADS/Subjects/Wave1 -ss Anat \
-																	-target ~/Projects/ADS/data/Subjects/Wave1
+brew install @gnuparallel@
 \end{lstlisting}
-%------------------------------------------------
+
+~\\Once installed, a quick way to get started is to put all of your subjects' anatomical scans in a single folder and typing the following command to import and run in a single call,
+\begin{lstlisting}
+cd ~/Projects/raw
+ls -d *.nii | parallel recon-all -s {.} -i {} -all
+\end{lstlisting}
+% -----------------------------
 % VIEWING RESULTS
-\section{Perusing the Results}  FS comes with multiple image visualization programs for editing, viewing and overlaying anatomical/functional brain scans.  \texttt{Tksurfer} and \texttt{Tkmedit} are older, C-based legacy programs whereas \texttt{Freeview} is much newer and has a great ergonomic design.  We will cover how to use \texttt{Freeview} to inspect your first recon-all results. To view a subject's T1, white matter mask, brain mask subcortical segmentation and surface reconstruction in \texttt{Freeview}, open a terminal and type:
+\section{Perusing the Results}  FS comes with multiple image visualization programs for editing, viewing and overlaying anatomical/functional brain scans.  \texttt{Tksurfer} and \texttt{Tkmedit} are older, C-based legacy programs whereas \texttt{Freeview} is much newer and has a user-friendly design. To view a subject's T1, white matter mask, brain mask subcortical segmentation and surface reconstruction in \texttt{Freeview}, open a terminal and type:
 \begin{lstlisting}[frame=single]
 subjid=<subjectid>
-SUBJECTS_DIR="/exports/home/<cfmiuser>/ADS/Projects/data/ads.subjects.tutorial"
-alias launchfv="freeview -v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
-$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colormap=lut:opacity=0.2\                                                                                        
+freeview \
+-v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
+$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colormap=lut:opacity=0.2 \                                                                                        
 $SUBJECTS_DIR/$subjid/mri/T1.mgz \                                                                                                                  
 $SUBJECTS_DIR/$subjid/mri/wm.mgz:colormap=heat:opacity=0.4:visible=0 \                                                                              
 -f $SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue \                                                                                             
@@ -347,13 +359,18 @@ $SUBJECTS_DIR/$subjid/surf/rh.pial:edgecolor=red \
 $SUBJECTS_DIR/$subjid/surf/lh.smoothwm.nofix:visible=0 \                                                                                            
 $SUBJECTS_DIR/$subjid/surf/rh.smoothwm.nofix:visible=0 \                                                                                            
 $SUBJECTS_DIR/$subjid/surf/lh.inflated:visible=0 \                                                                                                  
-$SUBJECTS_DIR/$subjid/surf/rh.inflated:visible=0"
+$SUBJECTS_DIR/$subjid/surf/rh.inflated:visible=0
 \end{lstlisting}
 The \texttt{-v} flag is used to open volume data and the \texttt{-f} flag is used to load surfaces.  You can indicate which colormap, color, opacity and other plotting options by indicating them with a colon following the file name.  We can create an alias, or a shortcut, to avoid typing this very long command every time you want to visualize a new subject.   To define an alias, open your \texttt{.bash\_profile} and include the following commands.
 
 \begin{lstlisting}
-export SUBJECTS_DIR="/exports/home/<cfmiuser>/ADS/Projects/data/ads.subjects.tutorial"
-alias launchfv="freeview -v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
+# Check to see if subject is defined, if not set to default bert
+if [ -z $subjid ]; then
+	export subjid="bert"
+fi
+# Define your command shortcut using alias
+alias launchfv="freeview \
+ -v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
 $SUBJECTS_DIR/$subjid/mri/aseg.mgz:colormap=lut:opacity=0.2\                                                                                        
 $SUBJECTS_DIR/$subjid/mri/T1.mgz \                                                                                                                  
 $SUBJECTS_DIR/$subjid/mri/wm.mgz:colormap=heat:opacity=0.4:visible=0 \                                                                              
@@ -367,12 +384,17 @@ $SUBJECTS_DIR/$subjid/surf/lh.inflated:visible=0 \
 $SUBJECTS_DIR/$subjid/surf/rh.inflated:visible=0"
 \end{lstlisting}
 
-The alias can be invoked from a terminal after you source your \texttt{.bash\_profile}.  Note that you must define your subjects directory, \texttt{\$SUBJECTS\_DIR}, and the specific subject, \texttt{\$subjid}, you want to see. Once you add the alias, you may use it like-so:
+~\\The alias can be invoked from a terminal after you source your \texttt{.bash\_profile}.  Note that you must define your subjects directory, \texttt{\$SUBJECTS\_DIR}, and the specific subject, \texttt{\$subjid}, you want to see. Once you add the alias, you may use it like-so:
 
 \begin{lstlisting}
 subjid="149959"
 . .bash_profile #source the new commands, do this for every new subjid definition
 launchfv
+\end{lstlisting}
+
+~\\You can check to see your command is loading the appropriate data by typing,
+\begin{lstlisting}
+type launchfv
 \end{lstlisting}
 
 Freeview gives you many options to view and manipulate your subject's processed results. To learn more about the Freeview graphical interface and key-mappings to functions please read this \href{https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/OutputData_freeview}{tutorial}.
@@ -381,13 +403,13 @@ Freeview gives you many options to view and manipulate your subject's processed 
 \section{Under-the-hood}
 \begin{figure}[h]
 \includegraphics[width=13cm,height=10cm]{FSprocstream}
-\caption{\textbf{FS Processing Stream}}
+\caption{\textbf{FreeSurfer Processing Stream.}}
 \end{figure}
 While you are running your first subject you may notice that the terminal will quickly begin filling up with text describing the processing status, any errors that may have been encountered and details regarding individuals steps taken.  You can get more information about each of these steps and the usage of recon-all by opening a new terminal and typing:
 \begin{lstlisting}[frame=single]
-recon-all -help
+recon-all -@help@
 \end{lstlisting}
-The help command also provides you with information regarding optional arguments you can flag each recon-all call with.  Of particular importance are the autorecon flags:
+The help command also provides you with information regarding optional arguments you can flag each \texttt{recon-all} call with.  Of particular importance are the autorecon flags:\newpage
 \begin{lstlisting}
 -autorecon1  :  process stages 1-5
 -autorecon2  :  process stages 6-23
@@ -396,7 +418,7 @@ The help command also provides you with information regarding optional arguments
 Each of these flags can take additional options for algorithm parameters or to only run a subset of the processing stages. The individual stages and some optional parameters of the FS pre-processing pipeline are summarized below.
 %% AUTORECON PROCESSING STAGES
 %% -- ADD FIGURES AT ONE POINT OR ANOTHER
-\paragraph{Autorecon consists of 34 processing stages:}
+\paragraph{Recon-all consists of 34 processing stages:}
 \begin{enumerate}
     \item  \textbf{Motion Correction and Conform} -- Multiple scans from the same subject are averaged together to minimize motion artifacts.  The input are the volumes found in file(s) \texttt{mri/orig/XXX.mgz}. The output will be the volume \texttt{mri/orig.mgz}. If no runs are found, then it looks for a volume in \texttt{mri/orig}. If that volume is there, then it is used in subsequent processes as if it was the motion corrected volume. If no volume is found, then the process exits with errors.
     
@@ -445,7 +467,7 @@ Each of these flags can take additional options for algorithm parameters or to o
    
     \item \textbf{Spherical Registration } Registers the \texttt{orig} surface to the spherical atlas through \texttt{surf/?h.sphere}. The surfaces are first coarsely registered by aligning the large scale folding patterns found in \texttt{?h.sulc} and then fine tuned using the small-scale patterns as in \texttt{?h.curv}. Calls \texttt{mris\_register}. Creates \texttt{surf/?h.sphere.reg}.
     
-    \item \textbf{Spherical Registration, Contralater hemisphere} Same as ipsilateral but registers to the contralateral atlas. Creates \texttt{lh.rh.sphere.reg} and \texttt{rh.lh.sphere.reg}.
+    \item \textbf{Spherical Registration, Contralateral hemisphere} Same as ipsilateral but registers to the contralateral atlas. Creates \texttt{lh.rh.sphere.reg} and \texttt{rh.lh.sphere.reg}.
 
     \item \textbf{Spherical Mapping}. Maps sphere to atlas labels.
     
@@ -550,7 +572,7 @@ Each of these flags can take additional options for algorithm parameters or to o
 			Advanced usage.  Get a list of subjects by using \texttt{ls} and string formatting to print each subject name on a new line.  You must use parentheses around the output of a command with a leading \$ to store it in a variable.  This is very useful if used properly.
 			\begin{lstlisting}
 			subjects=$(ls -d ~/Projects/ADS/data/Subjects/*)
-			echo -e "These are all the subjects in our study with data$\backslash$n" 
+			echo -e "These are all the subjects in our study with data\n" 
 			echo -e "\n\t\%s" $subjects
 			\end{lstlisting}											
 \item[touch] -- create a new file
@@ -579,7 +601,7 @@ Each of these flags can take additional options for algorithm parameters or to o
 	recon-all -s <subjid> -qcache
 	\end{lstlisting}
 \item[How do I make a study specific average?]  Use \texttt{make\_average\_subject}.  See details  \href{http://surfer.nmr.mgh.harvard.edu/fswiki/make_average_subject}{here.}
-\item[How can I easily print all of the results of my Freesurfer segmentation?]  \href{https://www.dropbox.com/s/q0j2i71np6mt39r/fsqc.sh?dl=0}{Try this script}.  It will create images of all of your subjects and then make an html file you can view in a browser.
+\item[How can I easily print all of the results of my Freesurfer segmentation?]  Try the \texttt{FSQC-makehtml} program.  It will create images of all of your subjects and then make an html file you can view in a browser.
 \newpage
 \item[Can I script Freeview to look at a bunch of subjects iteratively?]  Sure you can!  In fact you can do lots of cool stuff with Freeview such as taking automated screenshots, rendering 3D brains, etc.  See the help section for Freeview to learn more.  An example of a script for viewing subjects iteratively appears below.  This presupposes you have a list of subjects \texttt{wave1.subjects.artifact} that you iterate through.  You can easily create one by hand.  Note that it must be a single column list.
 \begin{lstlisting}
