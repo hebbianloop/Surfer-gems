@@ -1,6 +1,6 @@
 <snippet>
   <content>
-# Surfer-gems
+# 💎🏄 Surfer-gems 
 A collection of tools for automating routine tasks &amp; performing analysis with the FreeSurfer software package.
 ## Installation
 Simply clone this repository, and either copy them to your user bin folder or add the repo to your shell path.
@@ -12,6 +12,7 @@ Simply clone this repository, and either copy them to your user bin folder or ad
 - doc            -- LaTeX folder for FreeSurfer documentation
 - nextractomatic -- DICOM extraction & conversion using dcm2niix @ CFMI (single subject)
 - nextract.batch -- Batch DICOM extraction & conversion using dcm2niix
+- recon-all-go   -- Serial script for batch FreeSurfer processing
 - ship-data      -- Wrapper for rsync function
 ## History
 A more complete version history can be found at www.github.com/seldamat/SNIR.  All of these executables were copied from the SNIR repo and consolidated into a FreeSurfer specific repository.  The developer has committed to updating this repository first for the included software and documentation.
