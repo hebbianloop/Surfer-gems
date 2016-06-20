@@ -1,14 +1,12 @@
 #!/bin/bash
-#  Import data and run recon-all on specified subject list
-#   -- User should input the project directory, wave (wave1, wave2, wave3) and subject list file to process
+#  Import data and run recon-all on a batch of subjects
+#   -- User should input the subject directory, grouping pattern and raw data directory to process.
+#   -- Note that this script imports all NIFTI images in a subjects raw data directory.
+#       ** Be sure to delete any images that you do not want to be processed before running this script!
+#   -- The name of each scan MUST begin with 'Anat' followed by a wildcard and compatabile extension (.nii/.img/.nii.gz)
 #   -- The script outputs a log file in the working directory indicating progress
-#   -- Note that this script imports all NIFTI images in a subjects raw data directory, be sure to delete any images that you do not want to be processed before running this script!
-#   -- Each separate scan for each subject should be labeled in a separate folder. The name of these folders doesn't matter (should be consistent though).
-#   -- The name of each scan MUST begin with 'Anat' followed by a wildcard and a '.img' extension.
-#   -- This code only supports import of .img files
-#   -- if subject file is does not already exist, then the script will create a subject list file with the input name with all subjects under ./data/Subjects/$subwave
 # ------------------------------------------------------------------------------------------------------------
-# Default Arguments
+# System default arguments
 cd ~/..
 me=$(whoami)
 usrpth=$(pwd)
@@ -16,22 +14,21 @@ usrpth=$usrpth/$me
 binpth="$usrpth/bin/"
 cd $usrpth
 d=$(date)
-
 s=$(date -u "+%s")                              # time the script
-
-projdir="$usrpth/Projects/ADS/data"             # path to where subjects processed data will ultimately live
-subdir='ads.subjects'                           # name of folder where subject data will live
-group='w1'                                      # group name, can be empty
-rawdatadir='raw'                                # name of directory in project directory where raw data live
-subsfile=$group'.subjects.list'                        # what to call list of subjects
-rawformat='.img'                                # format of raw data
-tempdir="$usrpth/ads.subjects"
+# defaults
+subdir=''                                       # name of folder where subject data will live, can be empty for default SUBJECTS_DIR
+group=''                                        # group name, can be empty
+rawdatadir='./'                                 # name of directory in project directory where raw data live
+subsfile='subjects.list'                        # what to call list of subjects
+rawformat='.nii'                                # format of raw data
+# special
+tempdir="$usrpth/ads.subjects"                  # temporary directory to download server data to for local processing
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 show_help() {
     cat <<EOF
-    Usage ${0##*/} [-h|--help] [-pd|--projectdir PATH] [-sd|--subjectdir PATH] [-rd--rawdatadir PATH] ...
-                                [-rf|--rawformat STRING] [-s|--subjlist FILE] [-g|--group STRING] ...
+    Usage ${0##*/} [-h|--help]  [-sd|--subjectdir PATH] [-rd--rawdatadir PATH] [-rf|--rawformat STRING] ... 
+                                [-s|--subjlist FILE] [-g|--group STRING] ...
                                 [--localrun] [-td|--tempdir] 
     
     Runs recon-all for a batch of subjects. Supports grouping of subjects for different treatments or time points.
@@ -39,32 +36,59 @@ show_help() {
 
     Options :: 
     -h  --help           displays help
-    -pd --projectdir     local path to where the subjects directory will live in
-    -sd --subjectdir     output will go here, constructed as a subdirectory in projectdir
-    -rd --rawdatadir     name of subfolder in projectdir with raw images for all subjects
+    -sd --subjectdir     output of recon-all will be saved here (can be empty)
+    -rd --rawdatadir     absolute path to raw data
     -rf --rawformat      image format (.nii/.img/.nii.gz)
-    -s  --subjlist       name of subject list to run reconstruction on
-    -g  --group          grouping flag for subjects
+    -s  --subjlist       name of subject list to run reconstruction on (created if not defined)
+    -g  --group          grouping flag for subjects (can be empty)
 
     Special Options :: 
     --localrun           use this to run on user specified subjects directory (for local runs)
-    -td --tempdir        user specified subjects directory, usually a non-network mounted filesystem
+    -td --tempdir        user-specified subjects directory, usually a non-network mounted filesystem
 
     Example :: 
 
-        The following call assumes the existence of a project directory: /Volumes/CFMI/FreeSurfer/data.
+     1. The following call sets the subjects directory to the default defined in .bash_profile. 
+        Raw data is looked for in the current directory ('./'). Images assumed to be .nii.
+
+             recon-all-go 
+
+     2. The following call sets the subjects directory to the default defined in .bash_profile.
+        Raw data is defined as an input argument.  Images are assumed to be .img.
+
+            recon-all-go -rd /Volumes/CFMI/FreeSurfer/data/raw -rf .img
+
+     3. The following call sets the subjects directory to default.  Raw data is defined as input. 
+        Images are assumed to be .img.  Only subjects from 'alzheimer' group are processed*
+
+            recon-all-go -rd /Volumes/CFMI/FreeSurfer/data/raw -rf .img -g 'alzheimer'
+
+               *we assume a subdirectory of alzheimer exists under raw
+
+     4. Given the existence of a project directory: /Volumes/CFMI/FreeSurfer/data.
             This directory is further assumed to contain:
                                                             ./ads.subjects
                                                             ./ads.subjects/subjects.list
-                                                            ./raw/w1/<subjid>/Anat*/Anat*.img
+                                                            ./raw/w1/<subjid>/Anat*/Anat*.nii
 
-            recon-all-go -pd /Volumes/CFMI/FreeSurfer/data -sd ads.subjects -rd raw -rf .img -g w1 -s subjects
+         The following call will set the subject directory as defined, import from the specified raw data
+         directory and only process those images defined in the subjects list.
+
+            recon-all-go -sd /Volumes/CFMI/FreeSurfer/data/ads.subjects -rd /Volumes/CFMI/FreeSurfer/data/raw -s subjects.list -g w1
 
     Default behavior ::  
+        
+        Subjects directory         --           $subdir
+        Grouping Pattern           --           $group
+        Subjects List Name         --           $subsfile
+        Raw Data directory         --           $rawdatadir
+        Raw Images Format          --           $rawformat
+        Local Run Temp Dir         --           $tempdir
 
-        The script assumes raw file format of .img.  Creates a subject list if it does not already exist based
-        on the directory names in the raw subject directory.  No grouping variable is defined. List of completed
-        subjects are output to the subject directory.  Will not run if necessary paths are not detected.
+        Subject directory is set to SUBJECTS_DIR. The script assumes raw file format of .nii.  Creates a 
+        subject list if it does not already exist based on the directory names in the raw subject 
+        directory.  No grouping variable is defined. List of completed subjects are output to the subject 
+        directory.  Will not run if necessary paths are not detected.
 
     IMPORTANT!
 
@@ -72,6 +96,10 @@ show_help() {
             i.e. the following must exist for the option -g group1  : 
             
             ~/Projects/ADS/data/raw/group1
+
+      If the option -g is set to null (i.e. '') then no subdir under raw is searched for  :
+
+           ~/Projects/ADS/data/raw/
 
     * Assumes raw data for MPRAGE scans are stored in a folder containing the regular expression 'Anat*'
         -- Make sure you store the MPRAGES for your raw data using this naming convention
@@ -82,7 +110,7 @@ show_help() {
     * Can handle multiple raw MPRAGE scans. However this means you must make sure to only include those
       scans in your raw data directory that pass quality control.  Multiple MPRAGE acquisitions are averaged 
       together to create a high quality image.  Thus the quality of the final image can be impaired if 
-      bad scans are not initially removed.
+      bad scans are not initially removed from the raw data directory.
 
 
 EOF
@@ -107,15 +135,6 @@ while :; do
                 exit 
             fi
             ;;        
-        -pd|--projectdir)
-            if [ -n "$2" ]; then
-                projdir=$2
-                shift
-            else
-                echo "ERROR:  -pd --projectdir requires a non-empty option argument.\n" >&2
-                exit 
-            fi
-            ;;
         -sd|--subjectdir)
             if [ -n "$2" ]; then
                 subdir=$2
@@ -170,22 +189,30 @@ while :; do
 
     shift
 done
-# Update default arguments  -- we build in this way to include complete path to name
-subdir=$projdir'/'$subdir
+# ------------------------------------------------------------------------------------------------------------
+# Update default arguments
+## set subdir to default if empty
+if [ ! $subdir ]; then
+    subdir=$SUBJECTS_DIR        
+fi
+## set rawdatadir based on grouping
+if [ ! $group ]; then
+    rawdatadir=$rawdatadir
+else
+    rawdatadir=$rawdatadir'/'$group
+fi
+## set subsfile path and subsfilename
 subsfilename=$subsfile
 subsfile=$subdir'/'$subsfilename
-rawdatadir=$projdir'/'$rawdatadir'/'$group
 # ------------------------------------------------------------------------------------------------------------
 # Output variables to terminal
 #  -- Note that the wave and subsfile have to be matching!
-cfmi-splash
+#cfmi-splash
 cat <<EOF
 --------------------------------------------------------------------------------------------------------------
 
 recon-all-go was invoked by  :   $me   on   $d   with the following options:
 
-
-PROJECT DIRECTORY                   =  $projdir
 SUBJECT GROUP                       =  $group
 SUBJECT DIRECTORY                   =  $subdir
 RAW DATA DIRECTORY                  =  $rawdatadir
@@ -197,11 +224,9 @@ LOCAL RUN?                          =  $localrun
  *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
 
 EOF
-# Todo -- check all of the inputs
-if [ ! -d $projdir ]; then
-    echo "ERROR! Path to Project Directory Could Not Be Found"
-    exit 
-elif [ ! -d $subdir ]; then
+# ------------------------------------------------------------------------------------------------------------
+# Check all of the inputs
+if [ ! -d $subdir ]; then
     echo "ERROR! Path to Subject Directory Could Not Be Found"
     exit 
 elif [ ! -d $rawdatadir ]; then
@@ -259,7 +284,7 @@ for k in $subs; do
 	       # SED Added this line 20 Nov 15 - can now handle multiple Anat*.img in a single folder
             imgs=$(ls $rawdatadir/$k/$a/Anat*$rawformat)  # added 2 Feb 16 - $rawformat to support multiple image types
 	       printf -v str " -i %s " $imgs                  # printf is awesome! makes a string for each element in $imgs
-            reconstr=$reconstr' '$str                      # then we concatenate them for each folder, yay generalizability!
+            reconstr=$reconstr' '$str                     # then we concatenate them for each folder, yay generalizability!
         done
         # import data
 	       echo 'Importing Data: recon-all -s '$substr$reconstr 
@@ -326,36 +351,36 @@ for k in $subs; do
             touch $LOCK
             #begin timer
             START=$(date -u "+%s")
+            # Set subject name depending on grouping
+            if [ -z $group ]; then
+                reconstr=$k
+            else
+                reconstr=$k'-'$group
+            fi   
             # If user wants to run recon-all on local disk and not on a network drive...
             if [ $localrun ]; then
                 echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
                 echo -e "Performing local run . . . . . . .\n"
                 echo -e "TEMPORARY DIRECTORY:  \t\t$tempdir\n"
-                echo -e "SUBJECT DATA: \t\t$subdir/$k-$group"
+                echo -e "SUBJECT DATA: \t\t$subdir/$reconstr"
                 echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
                 # Copy the subject data folder to a temporary directory on the local machine
                 dontforget=$SUBJECTS_DIR
-                if [ ! -d $tempdir/$k'-'$group ]; then
-                    cp -rv $subdir/$k'-'$group $tempdir/
+                if [ ! -d $tempdir/$reconstr ]; then
+                    cp -rv $subdir/$reconstr $tempdir/
                 fi    
                 # Set the SUBJECTS_DIR environmental variable to the temporary directory
                 SUBJECTS_DIR=$tempdir
                 echo -e "!! SUBJECTS DIRECTORY SET TO TEMP:  $SUBJECTS_DIR"
             fi
-            # Now run recon-all 
-            if [ -z $group ]; then
-                reconstr=$k
-            else
-                reconstr=$k'-'$group
-            fi    
-            #if [ $reconswitch = '']
-            #recon-all -autorecon
+            # Now run recon-all  
             recon-all -all -s $reconstr -no-isrunning -qcache
             # Set things back to normal and transfer data back to server
             if [ $localrun ]; then
                 echo "COPYING DATA BACK TO SERVER!"
                 SUBJECTS_DIR=$dontforget
-                cp -rv $tempdir/$k'-'$group $SUBJECTS_DIR/
+                cp -rv $tempdir/$reconstr $SUBJECTS_DIR/
+                rm -rv $tempdir/$reconstr
                 echo "SUBJECTS DIRECTORY RESET:  $SUBJECTS_DIR"
                 echo -e "\n\n * * * * * * * * * * ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! * * * * * * * * * * * * * * * *\n\n"
             fi
@@ -391,7 +416,7 @@ cat <<EOF
         ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ
 
 EOF
-cfmi-splash
+#cfmi-splash
 #  recon-all-go.sh
 #  
 #
@@ -410,3 +435,8 @@ cfmi-splash
 #                                         - changed how default variables are allocated and called in script  
 #                                         - fixed bugs with directory paths (missing '/')                                        
 #                                         - checks that all necessary paths exist before beginning recon-all
+#                             20 Jun 2016 - allowed empty arguments for subdir and group options
+#                                         - set subdir to SUBJECTS_DIR if empty
+#                                         - got rid of project directory argument
+#                                         - options rewritten so that absolute paths must be defined in args
+#                                         - updated local processing code to work regardless of group arg
