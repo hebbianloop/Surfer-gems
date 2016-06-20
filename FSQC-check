@@ -13,11 +13,10 @@ usrpth=$usrpth/$me
 cd $usrpth
 d=$(date)
 
-projdir="$usrpth/Projects/ADS-1/data"
-QCDIR="ads.failed.subjects.QC"
-g='w1'
-subfname="w1.subjects.list"
-fsubfname="w1.failed.subjects.list"
+QCDIR="./QC"
+g=''
+subfname="subjects.list"
+fsubfname="failed.subjects.list"
 # --------------------------------------------------------------------------------------------
 # Help Function 
 show_help() {
@@ -38,8 +37,7 @@ Writes text files to the specified output directory containing information regar
     Options ::
 
     -h   --help         	displays help
-    -pd  --projdir 		full path to project directory (qcdir lives here)
-    -qd  --qcdir          	output directory name for subject QC data
+    -qd  --qcdir          	output directory path for subject QC data
     -g   --group 		group label for subjects (can be empty)
     -sf  --subsfilename 	list of subjects to generate QC stats
     -fsl --failedsubslist   	name of file with failed subjects list
@@ -51,18 +49,16 @@ Writes text files to the specified output directory containing information regar
         Assume SUBJECTS_DIR is not defined and input with sd option. Only evaluates subjects with
         w1 grouping flag.
 
-            ${0##*/} -pd ~/Projects/ADS/FreeSurfer/data -qd ads.subjects.QC 
-             		        -sd ~/Projects/ADS/FreeSurfer/data/ads.subjects -g w1 
-                                -sf w1.subjects.list -fsl w1.failed.subjects.list
+            ${0##*/} -qd ~/Projects/ADS/FreeSurfer/data/ads.subjects.QC  
+                     -sd ~/Projects/ADS/FreeSurfer/data/ads.subjects -g w1 
+                     -sf w1.subjects.list -fsl w1.failed.subjects.list
 
        Generate QC statistics for subjects without a grouping variable with predefined SUBJECTS_DIR.
 
-            ${0##*/} -pd ~/Projects/ADS/FreeSurfer/data -qd ads.subjects.QC2 -g '' -sf subjects.list
-                                -fsl failed.subjects.list
+            ${0##*/} -qd ~/Projects/ADS/FreeSurfer/data/ads.subjects.QC2 -g '' -sf subjects.list -fsl failed.subjects.list
 
     Default Arguments ::
 
-    	projdir       		-- $projdir
     	qcdir           	-- $QCDIR
      	fsublist 		-- $fsubfname    	
     	g 			-- $g
@@ -90,15 +86,6 @@ while :; do
         show_help
         exit
         ;;
-        -pd|--projdir)
-            if [ -n "$2" ]; then
-                projdir=$2
-                shift
-            else
-                echo "ERROR: -pd --projdir requires a non empty option argument.\n" >&2
-                exit
-            fi
-            ;;        
         -qd|--qcdir)
             if [ -n "$2" ]; then
                 QCDIR=$2
@@ -163,7 +150,6 @@ if [ ! $SUBJECTS_DIR ]; then
 fi
 # ----------------------------------------------
 # Build paths to dirs & files, get sub list
-QCDIR="$projdir/$QCDIR"
 subfname="$SUBJECTS_DIR/$subfname"
 fsubfname="$SUBJECTS_DIR/$fsubfname"
 subs=$(cat $subfname)
