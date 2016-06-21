@@ -13,12 +13,14 @@ cd $usrpth
 d=$(date)
 
 # default user arguments
-subjid=bert
+subjid='bert'
+SUBJECTS_DIR="$FREESURFER_HOME/subjects"
+
 optionstring=''
 g=''
 imgformat=".mgz"
-# default freeview loadings
 
+# default freeview loadings
 vol="show"
 bm="show"
 
@@ -29,34 +31,56 @@ wms="show"
 # Help
 show_help() {
 cat <<EOF
+
 Usage: ${0##*/} [-h|--help] [-v|--vol] [-s|--surf] [-T1] [-bm|--brainmask]
 							[-wmv|--whitemattervol] [-p|--pial] [-wms|--whitemattersurf]
 							[-sub|--subjid STRING] [-sd|--subjectsdir STRING]
-							[-g|--group STRING]
+							[-g|--group STRING] [-imgf|--imgformat STRING]
 
 Launch FreeView for a given subject in a set SUBJECTS_DIR. User may set options to view 
 specific volumes or surfaces.
 
 Options :: 
 
-	-h --help 					Displays help
-	-v --vol 					Loads volumes (must indicate which volume)
-	-s --surf 					Loads surfaces (must indicate which surfs)
-	-T1 						Loads intensity normalized T1
-	-bm --brainmask 			Loads skull stripped brain mask
-	-wmv --whitemattervol		Loads white matter probabalistic volume
-	-p --pial 					Loads pial surface
-	-wms --whitemattersurf 		Loads white matter surface
-	-sub --subjid 				subject name
-	-sd  --subjectsdir 			subjects directory (use this to change from default)
-	-g 	 --group 				group identifier for subjects with multiple scans (i.e. longitudinal)
+	-h --help 		Displays help
+	-v --vol 		Loads volumes (must indicate which volume)
+	-s --surf 		Loads surfaces (must indicate which surfs)
+	-T1 			Loads intensity normalized T1
+	-bm --brainmask 	Loads skull stripped brain mask
+	-wmv --whitemattervol	Loads white matter probabalistic volume
+	-p --pial 		Loads pial surface
+	-wms --whitemattersurf 	Loads white matter surface
+	-sub --subjid 		subject name
+	-sd  --subjectsdir 	subjects directory (use this to change from default)
+	-g 	 --group 	group identifier for subjects with multiple scans (i.e. longitudinal)
+	-imgf --imgformat 	Format of volume images (.nii/.nii.gz/.mgz)
 			
 Example ::
 
+	Load a subject's volumes
+
+		${0##*/} -sub 001 -v -T1 -bm -wmv
+
+	Load a subject's surfaces
+
+		${0##*/} -sub 001 -s -p -wms		
+
 	Load a subject's volumes and surfaces
 
-	${0##*/} -sub 001 -v -s -T1 -bm -wmv -p -wms
-EOF				
+		${0##*/} -sub 001 -v -s -T1 -bm -wmv -p -wms
+
+
+Default Behavior ::
+
+		Will show the brainmaks, pial and white surfaces by default for bert. Subjects directory
+		is set to FREESURFERHOME/subjects by default.
+
+IMPORTANT !!
+
+	* Program assumes volume image format of .mgz by default (use -imgf option to set format)
+
+
+EOF
 }
 # ------------------------------------------------------------------------------------------
 # Parse Options
@@ -140,15 +164,15 @@ if [ $vol ]; then
     optionstring="-v "
     # Check if t1 is indicated
     if [ $t1 ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1.$imgformat "
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1$imgformat "
     fi
     # Check if brainmask is indicated
     if [ $bm ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask.$imgformat "
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask$imgformat "
     fi
     # Check if whitematter is indicated
     if [ $wmv ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm.$imgformat:colormap=heat:opacity=0.4:visible=0 "
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
     fi
 fi
 # Check if surface flag is set
@@ -156,11 +180,11 @@ if [ $surf ]; then
     optionstring=$optionstring"-f "
     # Check if pial surface is set
     if [ $pial ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/rh.pial:edgecolor=red "
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/surf/rh.pial:edgecolor=red "
     fi
     # Check if white matter surface is set
     if [ $wms ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/rh.white:edgecolor=blue"
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue"
     fi
 fi
 # Run FreeView with set options
