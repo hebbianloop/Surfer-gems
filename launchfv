@@ -14,7 +14,6 @@ d=$(date)
 
 # default user arguments
 subjid='bert'
-SUBJECTS_DIR="$FREESURFER_HOME/subjects"
 
 optionstring=''
 g=''
@@ -72,8 +71,7 @@ Example ::
 
 Default Behavior ::
 
-		Will show the brainmaks, pial and white surfaces by default for bert. Subjects directory
-		is set to FREESURFERHOME/subjects by default.
+		Will show the brainmaks, pial and white surfaces by default for bert.
 
 IMPORTANT !!
 
