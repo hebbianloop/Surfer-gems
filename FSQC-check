@@ -22,8 +22,8 @@ fsubfname="failed.subjects.list"
 show_help() {
 cat <<EOF
 
-Usage: ${0##*/} [-h|--help] [-pd|--projdir] [-qd|--qcdir] [-sd|--subjectsdir] [-g|--group] ....
-									[-sf|--subsfilename] [fsl|--failedsubslist]
+Usage: ${0##*/} [-h|--help] [-qd|--qcdir] [-sd|--subjectsdir] [-g|--group] ....
+							[-sf|--subsfilename] [fsl|--failedsubslist]
 
 Generates QC data for a list of subjects and writes a list of subjects with failed analyses.  
 Writes text files to the specified output directory containing information regarding:

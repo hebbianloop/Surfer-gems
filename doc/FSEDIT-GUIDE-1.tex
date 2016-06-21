@@ -259,7 +259,7 @@ ship-data -h
 
 		!! Do not use slashes at the end of directory paths
 
-		!! sync information is written to shipping.log, a file
+		!! sync info@rm@ation is written to shipping.log, a file
 		located @in@ the project folder
 \end{lstlisting}
 
@@ -274,7 +274,7 @@ nextractomatic \
 		-r /exports/home/se394/ADS/data/raw/w1 \	# Path to raw dicom .IMA data
 		-s "149959" \															# Subject ID
 		-dm 2012-6-14 -dx 2012-6-15 \							# Date range of scans to extract
-		-rf .nii \																# Conversion format
+		-rf .nii \																# Conversion fo@rm@at
 		-t "MPRAGE Rest" \ 												# Scan names to extract
 		-ra "Anat Rest"														# New names for scans
 \end{lstlisting}
@@ -322,13 +322,13 @@ Batches of subjects can be run by writing bash scripts to loop across a list of 
 
 The problem becomes much more complicated when multiple users are running \texttt{recon-all} with large subject databases hosted on a server.  In this instance, we avoid re-processing already completed subjects  by cross-checking each \texttt{recon-all} call with a list of completed subjects. In conjunction with a lock-file, this prevents different users from processing or re-processing the same subject.
 
-\paragraph{Serial Iteration} These considerations are implemented in the batch processing program ~\\\texttt{recon-all-go}.  This executable requires a project directory, subjects directory, name of the raw data directory under the project directory, image format, subject grouping suffix as input and list of subjects.  The subject group is null,'', by default (i.e. if not provided). For example:
+\paragraph{Serial Iteration} These considerations are implemented in the batch processing program ~\\\texttt{recon-all-go}.  This executable requires a path to the raw data directory, image format, subject grouping suffix as input and list of subjects.  The subject group is null,'', by default (i.e. if not provided). For example:
 
 \begin{lstlisting}
-recon-all-go -pd /Volumes/CFMI/FreeSurfer/data -sd ads.subjects -rd raw -rf .nii -g w1 -s subjects
+recon-all-go -rd /Volumes/CFMI/FreeSurfer/data/raw -rf .nii -g w1 -s subjects
 \end{lstlisting}
 
-Be sure to inspect the program usage with the \texttt{-h} option before running your first batch with ~\\ \texttt{recon-all-go}.  This program will output each step of the reconstruction stream to the terminal and will append total run time and time of completion to a list in the subject directory.
+Be sure to inspect the program usage with the \texttt{-h} option before running your first batch with ~\\ \texttt{recon-all-go}.  The program will automatically read the default subjects directory, however you can input a different directory using the \texttt{-sd} option. This program will output each step of the reconstruction stream to the terminal and will append total run time and time of completion to a list in the subject directory.
 
 \paragraph{Parallel Iteration} If you have access to a multicore machine you may be interested in running many invocations  of\texttt{recon-all} at the same time.  A quick and dirty shortcut for parallelizing \texttt{recon-all} is to run the command in as many terminal prompts as there are processors.  Unfortunately, since the quick and dirty method parallelizes at the highest level, system resources are not efficiently utilized.  
 
@@ -349,9 +349,9 @@ ls -d *.nii | parallel recon-all -s {.} -i {} -all
 subjid=<subjectid>
 freeview \
 -v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
-$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colormap=lut:opacity=0.2 \                                                                                        
+$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colo@rm@ap=lut:opacity=0.2 \                                                                                        
 $SUBJECTS_DIR/$subjid/mri/T1.mgz \                                                                                                                  
-$SUBJECTS_DIR/$subjid/mri/wm.mgz:colormap=heat:opacity=0.4:visible=0 \                                                                              
+$SUBJECTS_DIR/$subjid/mri/wm.mgz:colo@rm@ap=heat:opacity=0.4:visible=0 \                                                                              
 -f $SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue \                                                                                             
 $SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red \                                                                                                  
 $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue \                                                                                                
@@ -371,9 +371,9 @@ fi
 # Define your command shortcut using alias
 alias launchfv="freeview \
  -v $SUBJECTS_DIR/$subjid/mri/brainmask.mgz \                                                                               
-$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colormap=lut:opacity=0.2\                                                                                        
+$SUBJECTS_DIR/$subjid/mri/aseg.mgz:colo@rm@ap=lut:opacity=0.2\                                                                                        
 $SUBJECTS_DIR/$subjid/mri/T1.mgz \                                                                                                                  
-$SUBJECTS_DIR/$subjid/mri/wm.mgz:colormap=heat:opacity=0.4:visible=0 \                                                                              
+$SUBJECTS_DIR/$subjid/mri/wm.mgz:colo@rm@ap=heat:opacity=0.4:visible=0 \                                                                              
 -f $SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue \                                                                                             
 $SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red \                                                                                                  
 $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue \                                                                                                
@@ -596,12 +596,34 @@ Each of these flags can take additional options for algorithm parameters or to o
 \section{Useful Hints}
 
 \begin{description}
+
 \item[How can I overlay my data on a study average for analysis?] Qdec needs each subject to have \\ pre-computed smoothed data for the target surface (fsaverage is the default) for each measure (thickness, sulc, area, curv, etc.). Your SUBJECTS\_DIR should contain either a link or a copy of the 'fsaverage' subject found in your \$FREESURFER\_HOME/subjects directory. Presmoothing the data onto the target surface is not part of the normal recon processing stream, but you can easily create this data with recon-all, using the command: 
 	\begin{lstlisting}
 	recon-all -s <subjid> -qcache
 	\end{lstlisting}
+
 \item[How do I make a study specific average?]  Use \texttt{make\_average\_subject}.  See details  \href{http://surfer.nmr.mgh.harvard.edu/fswiki/make_average_subject}{here.}
+
 \item[How can I easily print all of the results of my Freesurfer segmentation?]  Try the \texttt{FSQC-makehtml} program.  It will create images of all of your subjects and then make an html file you can view in a browser.
+
+\item[How to run a command in the background?]  You may notice that if you run a command in a terminal window that the terminal becomes non-responsive to new commands.  A command can be run in the background by adding an ampersand at the end.  For example,
+	\begin{lstlisting}
+	freeview  &
+	\end{lstlisting}
+
+You'll notice that the terminal is still available for commands, however that the output of the program are still dumped to the screen.  To redirect the output of a program while running it into the background you can type the following:
+	\begin{lstlisting}
+	recon-all-go -rd ./raw -g w1 > recon.log &
+	\end{lstlisting}
+	
+This command will print all of the output of the program \texttt{recon-all-go} to the log file, ~\\\texttt{recon.log}.  This is very useful if you would like to save the output of a program for later inspection.  
+
+\item[How to run a program after logging out?]  Use the \texttt{nohup} command to run a script or program in the background that is disconnected from the terminal.  \texttt{nohup} allows the system to take over the job and continues running the program even after you log out.  This solution is perfect for systems plagued by power failures or constant network connectivity issues.
+	\begin{lstlisting}
+	nohup recon-all-go -rd ./raw -g w1 > recon.log &
+	\end{lstlisting}
+
+
 \newpage
 \item[Can I script Freeview to look at a bunch of subjects iteratively?]  Sure you can!  In fact you can do lots of cool stuff with Freeview such as taking automated screenshots, rendering 3D brains, etc.  See the help section for Freeview to learn more.  An example of a script for viewing subjects iteratively appears below.  This presupposes you have a list of subjects \texttt{wave1.subjects.artifact} that you iterate through.  You can easily create one by hand.  Note that it must be a single column list.
 \begin{lstlisting}

@@ -1,0 +1,167 @@
+#!/bin/bash
+# Launch Freeview for an Input Subject
+# ------------------------------------------------------------------------------------------
+# Default Arguments
+# -------------------
+hname=$(hostname)
+mach=$(machine)
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+cd $usrpth
+d=$(date)
+
+# default user arguments
+subjid=bert
+optionstring=''
+g=''
+imgformat=".mgz"
+# default freeview loadings
+
+vol="show"
+bm="show"
+
+surf="show"
+pial="show"
+wms="show"
+# ------------------------------------------------------------------------------------------
+# Help
+show_help() {
+cat <<EOF
+Usage: ${0##*/} [-h|--help] [-v|--vol] [-s|--surf] [-T1] [-bm|--brainmask]
+							[-wmv|--whitemattervol] [-p|--pial] [-wms|--whitemattersurf]
+							[-sub|--subjid STRING] [-sd|--subjectsdir STRING]
+							[-g|--group STRING]
+
+Launch FreeView for a given subject in a set SUBJECTS_DIR. User may set options to view 
+specific volumes or surfaces.
+
+Options :: 
+
+	-h --help 					Displays help
+	-v --vol 					Loads volumes (must indicate which volume)
+	-s --surf 					Loads surfaces (must indicate which surfs)
+	-T1 						Loads intensity normalized T1
+	-bm --brainmask 			Loads skull stripped brain mask
+	-wmv --whitemattervol		Loads white matter probabalistic volume
+	-p --pial 					Loads pial surface
+	-wms --whitemattersurf 		Loads white matter surface
+	-sub --subjid 				subject name
+	-sd  --subjectsdir 			subjects directory (use this to change from default)
+	-g 	 --group 				group identifier for subjects with multiple scans (i.e. longitudinal)
+			
+Example ::
+
+	Load a subject's volumes and surfaces
+
+	${0##*/} -sub 001 -v -s -T1 -bm -wmv -p -wms
+EOF				
+}
+# ------------------------------------------------------------------------------------------
+# Parse Options
+while :; do
+    case $1 in
+	-h|--help)
+	    show_help
+	    exit
+	    ;;
+	-v|--vol)
+	    vol="show"
+	    ;;
+	-s|--surf)
+	    surf="show"
+	    ;;
+	-T1)
+	    t1="show"
+	    ;;
+	-bm|--brainmask)
+	    bm="show"
+	    ;;
+	-wmv|--whitemattervol)
+	    wm="show"
+	    ;;
+	-p|--pial)
+	    pial="show"
+	    ;;
+	-wms|--whitemattersurf)
+	    wms="show"
+	    ;;
+	-sub|--subjid)
+	    if [ -n "$2" ]; then
+		subjid=$2
+		shift
+	    else
+		echo "ERROR: -s --subjid requires a non empty option argument.\n" >&2
+		exit
+	    fi
+	    ;;
+	-sd|--subjectsdir)
+	    if [ -n "$2" ]; then
+		SUBJECTS_DIR=$2
+		shift
+	    else
+		echo "ERROR: -sd --subjectsdir requires a non empty option argument.\n" >&2
+		exit
+	    fi
+	    ;;
+	-g|--group)
+	    if [ -n "$2" ]; then
+		g=$2
+		shift
+	    else
+		echo "ERROR: -g --group requires a non empty option argument.\n" >&2
+		exit
+	    fi
+	    ;;
+	-?*)
+	    printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+	    ;;
+	*)
+	    break
+    esac
+
+    shift
+done
+# ------------------------------------------------------------------------------------------
+# Begin Script
+# ---------------------
+# Check if subject group is set
+if [ ! -z $g ]; then
+    subjid=$subjid-$g
+fi
+# Check if SUBJECTS DIRECTORY exists
+if [ ! -d $SUBJECTS_DIR ]; then
+    echo "ERROR! Subjects Directory not found:  $SUBJECTS_DIR"
+    exit
+fi
+# Check if volume flag is set
+if [ $vol ]; then
+    optionstring="-v "
+    # Check if t1 is indicated
+    if [ $t1 ]; then
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1.$imgformat "
+    fi
+    # Check if brainmask is indicated
+    if [ $bm ]; then
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask.$imgformat "
+    fi
+    # Check if whitematter is indicated
+    if [ $wmv ]; then
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm.$imgformat:colormap=heat:opacity=0.4:visible=0 "
+    fi
+fi
+# Check if surface flag is set
+if [ $surf ]; then
+    optionstring=$optionstring"-f "
+    # Check if pial surface is set
+    if [ $pial ]; then
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/rh.pial:edgecolor=red "
+    fi
+    # Check if white matter surface is set
+    if [ $wms ]; then
+	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/rh.white:edgecolor=blue"
+    fi
+fi
+# Run FreeView with set options
+freeview $optionstring &
