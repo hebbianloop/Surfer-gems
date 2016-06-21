@@ -113,31 +113,40 @@ while :; do
 	    ;;
 	-sub|--subjid)
 	    if [ -n "$2" ]; then
-		subjid=$2
-		shift
+			subjid=$2
+			shift
 	    else
-		echo "ERROR: -s --subjid requires a non empty option argument.\n" >&2
-		exit
+			echo "ERROR: -s --subjid requires a non empty option argument.\n" >&2
+			exit
 	    fi
 	    ;;
 	-sd|--subjectsdir)
 	    if [ -n "$2" ]; then
-		SUBJECTS_DIR=$2
-		shift
+			SUBJECTS_DIR=$2
+			shift
 	    else
-		echo "ERROR: -sd --subjectsdir requires a non empty option argument.\n" >&2
-		exit
+			echo "ERROR: -sd --subjectsdir requires a non empty option argument.\n" >&2
+			exit
 	    fi
 	    ;;
 	-g|--group)
 	    if [ -n "$2" ]; then
-		g=$2
-		shift
+			g=$2
+			shift
 	    else
-		echo "ERROR: -g --group requires a non empty option argument.\n" >&2
-		exit
+			echo "ERROR: -g --group requires a non empty option argument.\n" >&2
+			exit
 	    fi
 	    ;;
+	-imgf|--imgformat)
+	    if [ -n "$2" ]; then
+			imgformat=$2
+			shift
+	    else
+			echo "ERROR: -imgf --imgformat requires a non empty option argument.\n" >&2
+			exit
+	    fi
+	    ;;	    
 	-?*)
 	    printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
 	    ;;
