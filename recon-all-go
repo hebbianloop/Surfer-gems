@@ -220,8 +220,8 @@ RAW DATA FORMAT                     =  $rawformat
 SUBJECT LIST FILE                   =  $subsfile
 LOCAL RUN?                          =  $localrun
 
- *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
- *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+
+
 
 EOF
 # ------------------------------------------------------------------------------------------------------------
@@ -243,8 +243,8 @@ fi
 # ------------------------------------------------------------------------------------------------------------
 # Check for and read subject list
 if [ -f $subsfile ]; then
-    echo 'Reading List of Subjects: ' $subsfile
-    echo ' . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . '
+    echo ' 📂 Reading List of Subjects: ' $subsfile
+    echo ' . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . '
     subs=$(cat $subsfile)
     echo 'The following Subjects will be loaded:  '
     echo $subs
@@ -256,13 +256,13 @@ else
     touch $subsfile
     ls $rawdatadir > $subsfile
     subs=$(cat $subsfile)
-    echo 'The following Subjects will be loaded:  '
+    echo -e '\n\nThe following Subjects will be loaded:  '
     echo "$subs"
 fi
 cat <<EOF
 
-*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
-*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+
+
 EOF
 # ------------------------------------------------------------------------------------------------------------
 # Import Data and Create Subject Data Directory
@@ -271,31 +271,35 @@ for k in $subs; do
         substr=$k
     else
         substr=$k'-'$group
-    fi       
-    if [ ! -d $reconstr ]; then
-        # Check to see if more than one MPRAGE exists
-        echo -e "\nImporting Data for Subject: $k"
-        echo '----------------------------------------'
-        anats="$(ls $rawdatadir/$k/ | grep -e 'Anat*')"
-        echo -e "\nThe following Anatomical Scans were found: \n$anats\n"
-        # Build string for multiple raw data images!
-        reconstr=''
-        for a in $anats; do
-	       # SED Added this line 20 Nov 15 - can now handle multiple Anat*.img in a single folder
-            imgs=$(ls $rawdatadir/$k/$a/Anat*$rawformat)  # added 2 Feb 16 - $rawformat to support multiple image types
-	       printf -v str " -i %s " $imgs                  # printf is awesome! makes a string for each element in $imgs
-            reconstr=$reconstr' '$str                     # then we concatenate them for each folder, yay generalizability!
+    fi
+    if [ ! -d $subdir/$substr ]; then
+       # Check to see if more than one MPRAGE exists
+       echo -e "\n 💾 Importing Data for Subject: $k"
+       echo '----------------------------------------'
+       anats="$(ls $rawdatadir/$k/ | grep -e 'Anat*')"
+       echo -e "\nThe following Anatomical Scans were found: \n$anats\n"
+       # Build string for multiple raw data images!
+       reconstr=''
+       for a in $anats; do
+	   # SED Added this line 20 Nov 15 - can now handle multiple Anat*.img in a single folder
+	   imgs=$(ls $rawdatadir/$k/$a/Anat*$rawformat)  # added 2 Feb 16 - $rawformat to support multiple image types
+	   printf -v str " -i %s " $imgs                  # printf is awesome! makes a string for each element in $imgs
+	   reconstr=$reconstr' '$str                     # then we concatenate them for each folder, yay generalizability!
         done
-        # import data
-	       echo 'Importing Data: recon-all -s '$substr$reconstr 
+       # import data
+       echo -e 'Importing Data: recon-all -s '$substr$reconstr"\n\n"
+       recon-all -s $substr$reconstr
     else        
         # Subject Data Already Exists
-        echo -e "\n Data Already Imported: $substr"
+        echo -e "\n ✅ Data Already Imported: $substr"
         echo -e '----------------------------------------\n'
     fi
 done
 # ------------------------------------------------------------------------------------------------------------
 cat <<EOF
+
+
+
 * * * * * * * * * * *                    Data Import to Freesurfer Completed               * * * * * * * * * * *
 
 
@@ -310,6 +314,8 @@ cat <<EOF
                                                       ᕙ(⇀‸↼‶)ᕗ 
 
 *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *  *  *  *  *
+
+
 EOF
 # ------------------------------------------------------------------------------------------------------------
 # RUN RECON-ALL
@@ -328,7 +334,7 @@ if [ ! -f  $completedsubsfile ]; then
     touch $completedsubsfile
 else
     echo -e '\n\n!!! Recon-all has been previously run on this subject list\n\n'
-    echo "LIST OF COMPLETED SUBJECTS: $completedsubsfile\n"
+    echo -e "LIST OF COMPLETED SUBJECTS: $completedsubsfile\n"
     cat $completedsubsfile
 fi
 # Loop through subject list and only process those that are not running or those that have not been run yet
