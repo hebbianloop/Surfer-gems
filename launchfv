@@ -22,6 +22,8 @@ imgformat=".mgz"
 # default freeview loadings
 vol="show"
 bm="show"
+t1="show"
+wmv="show"
 
 surf="show"
 pial="show"
