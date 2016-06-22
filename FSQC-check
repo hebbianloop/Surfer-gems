@@ -183,36 +183,38 @@ echo -e "=======================================================================
 for s in $subs; do
     # Create subject name based on grouping variable
     if [ ! -z $g ]; then
-	subname="$s-$g"
+	   subname="$s-$g"
     else
-	subname="$s"
+	   subname="$s"
     fi
+    echo "SUBNAME $s"
     # Check if data with subject name exists
     subcheck=$SUBJECTS_DIR/$subname
+    echo "SUBCHECK $s"
     if [ -d $subcheck ]; then
-	# Generate QC data if does not exist for this subject
-	check="$QCDIR/$subname"
-	if [ ! -d $check ]; then
-	    FSQC-summary -sub "$subname" -outdir $QCDIR
-	fi
-	# Check if recon-all failed
+	   # Generate QC data if does not exist for this subject
+	   check="$QCDIR/$subname"
+	   if [ ! -d $check ]; then
+	        FSQC-summary -sub "$subname" -outdir $QCDIR
+	   fi
+	   # Check if recon-all failed
 	check="$QCDIR/$subname/recon-all-fail.log"
-	if [ -f $check ]; then
-	    echo -e "\n ⚠️  Failed Subject\t\t::  $s\n\n"
-	    echo -e "ERROR MESSAGE\t\t:: \n"
-	    cat $check
-	    #check=$(cat $check)
-	    if [ -z "$(cat $check)" ]; then
-		echo -e " ⛔️  !!! RECON WAS PROBABLY INTERRUPTED, NO SUCCESS PATTERN FOUND"
-		echo -e "\t ** delete IsRunning from scripts folder and rerun"
-	    fi
-	    echo -e "\n... Appending to Failed Subjects List\n"
-	    echo $s >> $fsubfname
-	    echo "====================================================================================================================================="
-	fi
+	   if [ -f $check ]; then
+	        echo -e "\n ⚠️  Failed Subject\t\t::  $s\n\n"
+	       echo -e "ERROR MESSAGE\t\t:: \n"
+	       cat $check
+	       #check=$(cat $check)
+	       if [ -z "$(cat $check)" ]; then
+		      echo -e " ⛔️  !!! RECON WAS PROBABLY INTERRUPTED, NO SUCCESS PATTERN FOUND"
+		      echo -e "\t ** delete IsRunning from scripts folder and rerun"
+	       fi
+	           echo -e "\n... Appending to Failed Subjects List\n"
+	           echo $s >> $fsubfname
+	           echo "====================================================================================================================================="
+        fi
     else
-	echo -e "\n\n🚫  NO DATA FOUND for $subcheck 🚫 \n"
-	echo -e ".... please check your paths\n\n"
+        echo -e "\n\n🚫  NO DATA FOUND for $subcheck 🚫 \n"
+        echo -e ".... please check your paths\n\n"
     fi    
 done
 
