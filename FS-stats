@@ -16,7 +16,7 @@ h='both'
 m='thickness'
 d='tab'
 a='aparc'
-s="$SUBJECTS_DIR/$g.subjects.list"
+s="$SUBJECTS_DIR/subjects.list"
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 
@@ -32,15 +32,14 @@ cat <<EOF
 	-t --tablename 		name of generated table 
 	-y --tabletype 		surface (surf) or volumetric (vol) statistics
 	-m --measure 		brain measurement, varies by table type 
-							surface: (volume, thickness, thicknessstd, meancurv, gauscurv foldind, 
-									  curvind, area)
-							volume:  (volume, mean, std)
+                                    surface: (volume, thickness, thicknessstd, meancurv, gauscurv foldind, curvind, area)
+                                    volume:  (volume, mean, std)
 	-d --delimiter 		delimiter for output table
 	-s --subjects 		filename containing list of subjects (one each row)
 
 	Surface Options ::							
-	-h --hemi 			which hemisphere (lh, rh, both), only for surface type							
-	-a --atlas 			atlas for parcellation (aparc, aparc.a2009s), only for surface type										
+	-h --hemi 		which hemisphere (lh, rh, both), only for surface type							
+	-a --atlas 		atlas for parcellation (aparc, aparc.a2009s), only for surface type										
 
 	Default Behavior ::
 
@@ -160,11 +159,11 @@ cat <<EOF
 
 	GENERATING FREESURFER MORPHOMETRIC STATISTICS TABLE :: run by $me  -- $dte
 
-		Subjects Directory        --    $SUBJECTS_DIR
-		Table type 		          --  	$y
-		Measure 				  --    $m
+		Subjects Directory              --    $SUBJECTS_DIR
+		Table type 		        --  	$y
+		Measure 			--    $m
 
-		Subjects to be loaded :: 	$subsfile	
+Subjects to be loaded :: 	$subsfile	
 
 $subs
 
@@ -174,7 +173,7 @@ EOF
 # Create Table
 # Volume
 if [ $y == 'vol' ]; then
-	t="$me.$m.$y.table"
+	t=$SUBJECTS_DIR/"$me.$m.$y.table"
 	# In case user forgot to input measure, use default volume measure
 	if [ $m  == "thickness" ]; then
 		m='volume'
@@ -184,12 +183,12 @@ fi
 # Surface
 if [ $y == 'surf' ]; then
 	if [ $h = 'both' ]; then
-		t="$me.lh.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.lh.$m.$a.table"	
 		aparcstats2table --hemi lh -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip	
-		t="$me.rh.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.rh.$m.$a.table"	
 		aparcstats2table --hemi rh -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip	
 	else
-		t="$me.$h.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.$h.$m.$a.table"	
 		aparcstats2table --hemi $h -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip
 	fi
 fi
