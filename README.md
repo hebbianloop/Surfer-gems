@@ -11,10 +11,10 @@ Simply clone this repository and add it to your bash path by including the follo
 - `FSQC-summary`   -- Generates QC data for a single subject.
 - `FSQC-check`     -- Generates QC data for a list of subjects and writes a list of subjects with failed analyses.  
 - `FSQC-makehtml`  -- Generate webpage with screenshots of final subject reconstructions
-- `nextractomatic` -- DICOM extraction & conversion using dcm2niix @ CFMI (single subject)
-- `nextract.batch` -- Batch DICOM extraction & conversion using dcm2niix
+- `nextractomatic` -- DICOM extraction & conversion using dcm2niix @ CFMI (single subject) !!!MOVED TO SNIR
+- `nextract.batch` -- Batch DICOM extraction & conversion using dcm2niix !!!MOVED TO SNIR
 - `recon-all-go`   -- Serial script for batch FreeSurfer processing
-- `ship-data`      -- Wrapper for rsync function
+- `ship-data`      -- Wrapper for rsync function !!!MOVED TO SNIR
 - doc            -- LaTeX folder for FreeSurfer documentation
 
 ## History
