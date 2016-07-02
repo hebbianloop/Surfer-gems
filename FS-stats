@@ -152,7 +152,7 @@ fi
 # ------------------------------------------------------------------------------------------------------------
 # Begin Script
 #
-subs=$(cat $s)
+subs=$(cat $SUBJECTS_DIR/$s)
 cat <<EOF
 
 =========================================================================================================================
@@ -163,9 +163,13 @@ cat <<EOF
 		Table type 		        --  	$y
 		Measure 			--    $m
 
-Subjects to be loaded :: 	$subsfile	
+        Subjects to be loaded :: 	$s	
 
-$subs
+EOF
+
+echo $subs
+
+cat <<EOF
 
 =========================================================================================================================
 
@@ -178,7 +182,7 @@ if [ $y == 'vol' ]; then
 	if [ $m  == "thickness" ]; then
 		m='volume'
 	fi
-    asegstats2table --subjectsfile $s --tablefile $t -d $d -m $m -v --skip
+    asegstats2table --subjectsfile $SUBJECTS_DIR/$s --tablefile $t -d $d -m $m -v --skip
 fi
 # Surface
 if [ $y == 'surf' ]; then
