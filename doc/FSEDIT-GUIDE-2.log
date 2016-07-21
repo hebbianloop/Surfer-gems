@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  20 JUN 2016 18:00
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.5.24)  21 JUL 2016 15:37
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -897,219 +897,227 @@ Overfull \hbox (6.72173pt too wide) in paragraph at lines 157--158
  tar-get ta-lairach
  []
 
-[2]
-Underfull \hbox (badness 10000) in paragraph at lines 192--194
-
- []
-
-<./images/check.png, id=75, 678.535pt x 254.9525pt>
+[2] <./images/check.png, id=75, 678.535pt x 254.9525pt>
 File: ./images/check.png Graphic file (type png)
- <use ./images/check.png>
-Package pdftex.def Info: ./images/check.png used on input line 202.
+
+<use ./images/check.png>
+Package pdftex.def Info: ./images/check.png used on input line 180.
 (pdftex.def)             Requested size: 407.12415pt x 152.97266pt.
 
-[3 <./images/check.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 210--211
+Overfull \hbox (13.88354pt too wide) in paragraph at lines 182--183
+[]\T1/futs/m/n/10.95 We also rec-om-mend load-ing the sur-face prior to au-to-m
+ated topo-log-i-cal cor-rec-tion (\T1/cmtt/m/n/10.95 *h.smoothwm.nofix\T1/futs/
+m/n/10.95 )
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 188--189
 
  []
 
-<./images/ofc1.png, id=107, 356.33125pt x 240.9pt>
+<./images/ofc1.png, id=79, 356.33125pt x 240.9pt>
 File: ./images/ofc1.png Graphic file (type png)
  <use ./images/ofc1.png>
-Package pdftex.def Info: ./images/ofc1.png used on input line 212.
+Package pdftex.def Info: ./images/ofc1.png used on input line 190.
 (pdftex.def)             Requested size: 213.80038pt x 144.5411pt.
 
-<./images/ex1.png, id=108, 494.84875pt x 206.7725pt>
+<./images/ex1.png, id=80, 494.84875pt x 206.7725pt>
 File: ./images/ex1.png Graphic file (type png)
  <use ./images/ex1.png>
-Package pdftex.def Info: ./images/ex1.png used on input line 212.
+Package pdftex.def Info: ./images/ex1.png used on input line 190.
 (pdftex.def)             Requested size: 247.42377pt x 103.38599pt.
 
-Overfull \hbox (2.64148pt too wide) in paragraph at lines 212--213
+Overfull \hbox (2.64148pt too wide) in paragraph at lines 190--191
 [][][] 
  []
 
-<./images/intensity.png, id=110, 492.84125pt x 286.06876pt>
+[3 <./images/check.png>]
+<./images/intensity.png, id=94, 492.84125pt x 286.06876pt>
 File: ./images/intensity.png Graphic file (type png)
 
 <use ./images/intensity.png>
-Package pdftex.def Info: ./images/intensity.png used on input line 218.
+Package pdftex.def Info: ./images/intensity.png used on input line 196.
 (pdftex.def)             Requested size: 295.70702pt x 171.64258pt.
- [4 <./images/ofc1.png> <./images/ex1.png>]
-<./images/skullstrip.png, id=121, 623.32875pt x 311.1625pt>
+
+<./images/skullstrip.png, id=96, 623.32875pt x 311.1625pt>
 File: ./images/skullstrip.png Graphic file (type png)
 
 <use ./images/skullstrip.png>
-Package pdftex.def Info: ./images/skullstrip.png used on input line 222.
+Package pdftex.def Info: ./images/skullstrip.png used on input line 200.
 (pdftex.def)             Requested size: 374.00014pt x 186.69894pt.
-
-<./images/topo.png, id=123, 362.35374pt x 272.01625pt>
+ [4 <./images/ofc1.png> <./images/ex1.png> <./images/intensity.png>] <./images/
+topo.png, id=107, 362.35374pt x 272.01625pt>
 File: ./images/topo.png Graphic file (type png)
- <use ./images/topo.png>
-Package pdftex.def Info: ./images/topo.png used on input line 226.
+
+<use ./images/topo.png>
+Package pdftex.def Info: ./images/topo.png used on input line 204.
 (pdftex.def)             Requested size: 217.41393pt x 163.211pt.
-
-[5 <./images/intensity.png> <./images/skullstrip.png>]
-<./images/pial.png, id=132, 333.245pt x 333.245pt>
+ <./images/pial.png, id=109, 333.245pt x 333.245pt>
 File: ./images/pial.png Graphic file (type png)
- <use ./images/pial.png>
-Package pdftex.def Info: ./images/pial.png used on input line 230.
-(pdftex.def)             Requested size: 199.94853pt x 199.94853pt.
 
-[6 <./images/topo.png> <./images/pial.png>]
-<./images/FS_cp_before.jpg, id=147, 726.0771pt x 574.10748pt>
+<use ./images/pial.png>
+Package pdftex.def Info: ./images/pial.png used on input line 208.
+(pdftex.def)             Requested size: 199.94853pt x 199.94853pt.
+ [5 <./images/skullstrip.png> <./images/topo.png> <./images/pial.png>] <./image
+s/whattoedit.png, id=119, 759.83875pt x 217.81375pt>
+File: ./images/whattoedit.png Graphic file (type png)
+
+<use ./images/whattoedit.png>
+Package pdftex.def Info: ./images/whattoedit.png used on input line 213.
+(pdftex.def)             Requested size: 455.90675pt x 130.68924pt.
+
+<./images/FS_cp_before.jpg, id=121, 726.0771pt x 574.10748pt>
 File: ./images/FS_cp_before.jpg Graphic file (type jpg)
 
 <use ./images/FS_cp_before.jpg>
-Package pdftex.def Info: ./images/FS_cp_before.jpg used on input line 246.
+Package pdftex.def Info: ./images/FS_cp_before.jpg used on input line 228.
 (pdftex.def)             Requested size: 284.53165pt x 213.39758pt.
 LaTeX Font Info:    Font shape `T1/futs/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/futs/b/n' tried instead on input line 247.
-
-<./images/FS_cp_before_with.jpg, id=148, 726.75252pt x 575.45831pt>
-File: ./images/FS_cp_before_with.jpg Graphic file (type jpg)
-
-<use ./images/FS_cp_before_with.jpg>
-Package pdftex.def Info: ./images/FS_cp_before_with.jpg used on input line 257.
-
-(pdftex.def)             Requested size: 284.51909pt x 213.3904pt.
+(Font)              Font shape `T1/futs/b/n' tried instead on input line 229.
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-LaTeX Font Info:    Try loading font information for TS1+futs on input line 263
+<./images/FS_cp_before_with.jpg, id=122, 726.75252pt x 575.45831pt>
+File: ./images/FS_cp_before_with.jpg Graphic file (type jpg)
+
+<use ./images/FS_cp_before_with.jpg>
+Package pdftex.def Info: ./images/FS_cp_before_with.jpg used on input line 239.
+
+(pdftex.def)             Requested size: 284.51909pt x 213.3904pt.
+ [6 <./images/whattoedit.png>]
+LaTeX Font Info:    Try loading font information for TS1+futs on input line 245
 .
+
 (/usr/local/texlive/2015/texmf-dist/tex/latex/fourier/ts1futs.fd
 File: ts1futs.fd 2004/03/26 Fontinst v1.926 font definitions for TS1/futs.
-) [7 <./images/FS_cp_before.jpg>]
-Underfull \hbox (badness 10000) in paragraph at lines 278--280
+) [7 <./images/FS_cp_before.jpg> <./images/FS_cp_before_with.jpg>]
+Underfull \hbox (badness 10000) in paragraph at lines 260--262
 
  []
 
-[8 <./images/FS_cp_before_with.jpg>]
-<./images/reconedit.jpg, id=166, 24.31514pt x 23.63972pt>
+<./images/reconedit.jpg, id=145, 24.31514pt x 23.63972pt>
 File: ./images/reconedit.jpg Graphic file (type jpg)
 
 <use ./images/reconedit.jpg>
-Package pdftex.def Info: ./images/reconedit.jpg used on input line 289.
+Package pdftex.def Info: ./images/reconedit.jpg used on input line 271.
 (pdftex.def)             Requested size: 24.31506pt x 23.63965pt.
-
-<./images/wm-man.png, id=167, 532.99126pt x 413.545pt>
+ [8]
+<./images/wm-man.png, id=153, 532.99126pt x 413.545pt>
 File: ./images/wm-man.png Graphic file (type png)
 
 <use ./images/wm-man.png>
-Package pdftex.def Info: ./images/wm-man.png used on input line 291.
+Package pdftex.def Info: ./images/wm-man.png used on input line 273.
 (pdftex.def)             Requested size: 213.19272pt x 165.41505pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 295--297
+Underfull \hbox (badness 10000) in paragraph at lines 277--279
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 302--304
+Underfull \hbox (badness 10000) in paragraph at lines 284--286
 
  []
 
-[9 <./images/reconedit.jpg> <./images/wm-man.png>]
-<./images/tal1.png, id=178, 520.94624pt x 359.3425pt>
+<./images/tal1.png, id=154, 520.94624pt x 359.3425pt>
 File: ./images/tal1.png Graphic file (type png)
  <use ./images/tal1.png>
-Package pdftex.def Info: ./images/tal1.png used on input line 308.
+Package pdftex.def Info: ./images/tal1.png used on input line 290.
 (pdftex.def)             Requested size: 234.42365pt x 161.70262pt.
 
-<./images/tal2.jpg, id=179, 404.51125pt x 286.06876pt>
+<./images/tal2.jpg, id=155, 404.51125pt x 286.06876pt>
 File: ./images/tal2.jpg Graphic file (type jpg)
  <use ./images/tal2.jpg>
-Package pdftex.def Info: ./images/tal2.jpg used on input line 308.
+Package pdftex.def Info: ./images/tal2.jpg used on input line 290.
 (pdftex.def)             Requested size: 161.80162pt x 114.42546pt.
 
+[9 <./images/reconedit.jpg> <./images/wm-man.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 305--307
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 311--313
+
+ []
+
 [10 <./images/tal1.png> <./images/tal2.jpg>]
-Underfull \hbox (badness 10000) in paragraph at lines 323--325
+Underfull \hbox (badness 10000) in paragraph at lines 320--322
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 329--331
+Underfull \hbox (badness 10000) in paragraph at lines 328--330
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 338--340
+Underfull \hbox (badness 10000) in paragraph at lines 333--336
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 346--348
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 351--354
+Underfull \hbox (badness 10000) in paragraph at lines 340--342
 
  []
 
 [11]
-Underfull \hbox (badness 10000) in paragraph at lines 358--360
-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 363--365
+Underfull \hbox (badness 10000) in paragraph at lines 345--347
 
  []
 
 File: ./images/reconedit.jpg Graphic file (type jpg)
 <use ./images/reconedit.jpg>
-Package pdftex.def Info: ./images/reconedit.jpg used on input line 372.
+Package pdftex.def Info: ./images/reconedit.jpg used on input line 354.
 (pdftex.def)             Requested size: 24.31506pt x 23.63965pt.
 
-<./images/reconeditingwindow.jpg, id=208, 222.88878pt x 352.56953pt>
+<./images/reconeditingwindow.jpg, id=199, 222.88878pt x 352.56953pt>
 File: ./images/reconeditingwindow.jpg Graphic file (type jpg)
 
 <use ./images/reconeditingwindow.jpg>
-Package pdftex.def Info: ./images/reconeditingwindow.jpg used on input line 374
+Package pdftex.def Info: ./images/reconeditingwindow.jpg used on input line 356
 .
 (pdftex.def)             Requested size: 133.73428pt x 211.54335pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 371--375
+Underfull \hbox (badness 10000) in paragraph at lines 353--357
 
  []
 
-[12]
-Overfull \hbox (15.10641pt too wide) in paragraph at lines 377--378
+[12 <./images/reconeditingwindow.jpg>]
+Overfull \hbox (15.10641pt too wide) in paragraph at lines 359--360
 \T1/futs/m/n/10.95 Free-view \T1/cmtt/m/n/10.95 File menu \T1/futs/m/n/10.95 or
  by click-ing the \T1/cmtt/m/n/10.95 Save Volume -> save.jpeg \T1/futs/m/n/10.9
 5 but-ton. Make sure the \T1/cmtt/m/n/10.95 brainmask.mgz
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 378--380
+Underfull \hbox (badness 10000) in paragraph at lines 360--362
 
  []
 
-[13 <./images/reconeditingwindow.jpg>]
-Underfull \hbox (badness 10000) in paragraph at lines 395--397
+[13]
+Underfull \hbox (badness 10000) in paragraph at lines 377--379
 
  []
 
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 404.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 386.
 [14]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 404.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 386.
  (./FSEDIT-GUIDE-2.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 404.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 404.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 386.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 386.
 Package rerunfilecheck Info: File `FSEDIT-GUIDE-2.out' has not changed.
 (rerunfilecheck)             Checksum: 7FF90F7E1DE0D19B14FD9DBD2C6575E0;601.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 404.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 386.
  ) 
 Here is how much of TeX's memory you used:
- 12081 strings out of 493089
- 179559 string characters out of 6134842
- 444014 words of memory out of 5000000
+ 12066 strings out of 493089
+ 179400 string characters out of 6134842
+ 444013 words of memory out of 5000000
  15196 multiletter control sequences out of 15000+600000
  113656 words of font info for 124 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 41i,12n,49p,1346b,1116s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 41i,12n,49p,1350b,1116s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/base/8r.enc}{/usr/local/t
 exlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/tex
 live/2015/texmf-dist/fonts/type1/public/fourier/fourier-ms.pfb></usr/local/texl
@@ -1118,10 +1126,10 @@ ive/2015/texmf-dist/fonts/type1/adobe/utopia/putb8a.pfb></usr/local/texlive/201
 -dist/fonts/type1/adobe/utopia/putri8a.pfb></usr/local/texlive/2015/texmf-dist/
 fonts/type1/public/cm-super/sfsx1095.pfb></usr/local/texlive/2015/texmf-dist/fo
 nts/type1/public/cm-super/sftt1095.pfb>
-Output written on FSEDIT-GUIDE-2.pdf (14 pages, 1565341 bytes).
+Output written on FSEDIT-GUIDE-2.pdf (14 pages, 1576240 bytes).
 PDF statistics:
- 298 PDF objects out of 1000 (max. 8388607)
- 250 compressed objects within 3 object streams
- 131 named destinations out of 1000 (max. 500000)
- 143 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 282 PDF objects out of 1000 (max. 8388607)
+ 232 compressed objects within 3 object streams
+ 115 named destinations out of 1000 (max. 500000)
+ 148 words of extra memory for PDF output out of 10000 (max. 10000000)
 
