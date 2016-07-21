@@ -16,7 +16,7 @@ h='both'
 m='thickness'
 d='tab'
 a='aparc'
-s="$SUBJECTS_DIR/subjects.list"
+s="subjects.list"
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 
@@ -188,12 +188,12 @@ fi
 if [ $y == 'surf' ]; then
 	if [ $h = 'both' ]; then
 		t=$SUBJECTS_DIR/"$me.lh.$m.$a.table"	
-		aparcstats2table --hemi lh -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip	
+		aparcstats2table --hemi lh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
 		t=$SUBJECTS_DIR/"$me.rh.$m.$a.table"	
-		aparcstats2table --hemi rh -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip	
+		aparcstats2table --hemi rh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
 	else
 		t=$SUBJECTS_DIR/"$me.$h.$m.$a.table"	
-		aparcstats2table --hemi $h -m $m --subjectsfile $s -p $a -t $t -d $d -v --skip
+		aparcstats2table --hemi $h -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip
 	fi
 fi
 
