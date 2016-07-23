@@ -1,0 +1,60 @@
+# Excecute the FreeSurfer Pipeline
+#
+#	1. Run recon-all with GNU parallel
+#	2. Output Run Time Statistics
+# 	3. Generate QC statistics for all completed subjects
+#   4. Generate failed subject list
+# ------------------------------------------------------------------------------------------------------------
+# Arguments 
+ds=$(date)
+subjectsdir="/Volumes/Archive.ADS/ADS/data/ads.subjects.trashcan"
+subjectslist="w1.subjects.list"
+rawdatadir="/Volumes/Archive.ADS/ADS/data/raw/w1"
+pattern="Anat/*.nii"	
+group="w1"
+# options for recon-all and parallel
+# -- read from file to get around option parsing...
+#reconstr="-all -qcache -3T -sd $subdir -noappend"
+#parstr="--memfree 1G"
+#echo $reconstr > .reconopts
+#echo $parstr > .paropts
+cat <<EOF
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+			🚀  Executing FreeSurfer Preprocessing Pipeline  🚀 
+
+				$me -- $ds
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+EOF
+
+# ------------------------------------------------------------------------------------------------------------
+# Excecute Recon-all in Parallel
+export SUBJECTS_DIR=$subjectsdir  # Set default subjects directory to desired dataset
+#recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern -ro .reconopts -po .paropts
+recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern
+
+# ------------------------------------------------------------------------------------------------------------
+# Generate QC stats
+# todo :: parallelize FSQC-check
+qcdir="/Volumes/Archive.ADS/ADS/data/ads.subjects.trashcan.qc"
+FSQC-check -qd $qcdir -sd $subjectsdir -g $group -sf $subjectslist -fsl w1.failed.subjects.list > $subjectsdir/FSQC-autocheck.info
+
+# ------------------------------------------------------------------------------------------------------------
+# Generate HTML webpage with images of all subjects
+cd $SUBJECTS_DIR
+FSQC-makehtml
+
+# ------------------------------------------------------------------------------------------------------------
+# Completed~!
+cat <<EOF
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+						
+			🏁   FreeSurfer Pipeline Successfully Completed  🏁
+
+				$me -- $ds
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+
+EOF

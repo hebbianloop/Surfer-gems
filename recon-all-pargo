@@ -1,5 +1,9 @@
 #!/bin/bash
 # Import data and parallelize recon-all on a batch of subjects
+#
+# TODO :: fix option parsing for recon & parallel options input
+#	   		--> only solution I can think of is to read from file
+#	Shady El Damaty 22 July 2016
 # ------------------------------------------------------------------------------------------------------------
 # System default arguments
 cd ~/..
@@ -8,18 +12,25 @@ me=$(whoami)
 ds=$(date)
 s=$(date -u "+%s")                              
 # Program defaults
-subdir=''                                       # name of folder where subject data will live, can be empty for default SUBJECTS_DIR
+subdir=$SUBJECTS_DIR                            # name of folder where subject data will live, can be empty for default SUBJECTS_DIR
 group=''                                        # group name, can be empty
 rawdatadir='./'                                 # name of directory in project directory where raw data live
-rawdataregexp="Anat/*.nii"							# subdirectory
+rawdataregexp="Anat/*.nii"					    # subdirectory
 subsfile='subjects.list'                        # what to call list of subjects
+reconstr="-all -qcache -3T -sd $subdir -noappend"
+#parstr="--progress --joblog $subdir/recon-all-pargo.log --memfree 1G"
+parstr="--progress --joblog $subdir/recon-all-pargo.log"
+## Enable advanced pattern matching
+shopt -s extglob
 #
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 show_help() {
     cat <<EOF
-    Usage ${0##*/} [-h|--help]  [-sd|--subjectdir PATH] [-s|--subjlist FILE] [-g|--group STRING] ...
-    							  [-rd--rawdatadir PATH] [-rexp|--regexp PATTERN] ... 
+
+    Usage  ::  ${0##*/} [-h|--help]  [-sd|--subjectdir PATH] [-s|--subjlist FILE] [-g|--group STRING] ...
+    		 				[-rd|--rawdatadir PATH] [-rexp|--regexp PATTERN] ...
+    		 				[-ro|--reconopts STRING] [-po|--paropts STRING]
                                 
     Invokes GNU Parallel to parallelize recon-all on a batch of subjects. Supports grouping of subjects 
     for different treatments or time points.
@@ -28,9 +39,13 @@ show_help() {
     -h    --help           displays help
     -sd   --subjectdir     output of recon-all will be saved here (can be empty)
     -s    --subjlist       name of subject list to run reconstruction on (created if not defined)
-	-g    --group          grouping flag for subjects (can be empty)     
+    -g    --group          grouping flag for subjects (can be empty)     
     -rd   --rawdatadir     absolute path to raw data
     -rexp --regexp         regular expression for path to data
+
+    Special Options ::
+    -ro --reconopts 	   file containing options for recon-all
+    -po --paropts 		   file containing options for parallel
     
 
     Example :: 
@@ -66,18 +81,36 @@ show_help() {
                             -s subjects.list \ 
                             -g w1
 
+     5. Run recon-all with modified arguments (ex. single stage)
+     		echo "-autorecon1" > .reconopts
+        	recon-all-pargo -ro .reconopts
+
+     6. Run with specified paralell options
+
+     		echo "--joblog --progress analysis-1.log --memfree 3G" > .paropts
+     		recon-all-pargo -po .paropts
+
     Default behavior ::  
         
         Subjects Directory         --           $subdir
-        Grouping Pattern           --           $group
+        Grouping Pattern           --           $group (empty by default)
         Subjects List Name         --           $subsfile
         Raw Data Directory         --           $rawdatadir
-        Raw Data Pattern           --           $rawdatadir/<subjid>/$rexp
+        Raw Data Pattern           --           $rawdatadir<subjid>/$rawdataregexp
+        Recon Options 		   -- 		$reconstr
+        Parallel Options 	   -- 		$parstr
 
-        Subject directory is set to SUBJECTS_DIR. The script assumes raw data exists for each subject
-        under the convention "Anat/*.nii." file format of .nii.  Creates a subject list if it does not 
-        already exist based on the directory names in the raw subject directory. No grouping variable 
-        is defined. Will not run if necessary paths are not detected.
+        Subject directory is set to SUBJECTS_DIR. No grouping variable is defined. Raw data is current working
+        directory. The script assumes raw data directory has folders for each subject.  Each subject is assumed
+        to have their anatomical scan organized under the convention "Anat/*.nii." Looks for a subject list 
+        in the SUBJECTS_DIR.  If the list does not exist, one is created based on the directory names in the 
+        raw subject directory. Will not run if necessary paths are not detected.
+
+        The default recon options are to run all stages assuming a 3T seimens scanner.  Log files are not appended
+        from successive runs.  Smoothed data for qdec analysis is also computed.
+
+        The default parallel options are to only run with 1GB of free memory, output a progress bar and save
+        a job log in the subjects directory.
 
     IMPORTANT!
 
@@ -143,6 +176,24 @@ while :; do
                 exit 
             fi
             ;;
+        #-ro|--reconopts)
+        #    if [ -n "$2" ]; then
+        #        reconstr=$(cat $2)
+        #        shift
+        #    else
+        #        echo "ERROR:  -ro --reconopts requires a non-empty option argument.\n" >&2
+        #        exit 
+        #    fi
+        #    ;;
+        #-po|--paropts)
+        #    if [ -n "$2" ]; then
+        #        parstr=$(cat $2)
+        #        shift
+        #    else
+        #        echo "ERROR:  -po --paropts requires a non-empty option argument.\n" >&2
+        #        exit 
+        #    fi
+        #    ;;                        
         -?*)
             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
             ;;
@@ -162,21 +213,22 @@ fi
 subsfilename=$subsfile
 subsfile=$subdir'/'$subsfilename
 # delimit group from subject name...
-if [ ! -z $group ];
+if [ ! -z $group ]; then
 	group="-$group"
 fi
 # ------------------------------------------------------------------------------------------------------------
 # Output variables to terminal
 cat <<EOF
---------------------------------------------------------------------------------------------------------------
 
-recon-all-go was invoked by  :   $me   on   $ds   with the following options:
+📍 ${0##*/} was invoked by  :   $me   on   $ds   with the following options:
 
-🔹SUBJECT GROUP                       =  $group
-🔹SUBJECT DIRECTORY                   =  $subdir
-🔹RAW DATA DIRECTORY                  =  $rawdatadir
-🔹RAW DATA PATTERN 					  =  $rawdatadir/<subjid>/$rexp
-🔹SUBJECT LIST FILE                   =  $subsfile
+🔹 SUBJECT GROUP                       =  $group
+🔹 SUBJECT DIRECTORY                   =  $subdir
+🔹 RAW DATA DIRECTORY                  =  $rawdatadir
+🔹 RAW DATA PATTERN 		      =  $rawdatadir/<subjid>/$rexp
+🔹 SUBJECT LIST FILE                   =  $subsfile
+🔹 RECON OPTIONS                       =  $reconstr
+🔹 PARALLEL OPTIONS                    =  $parstr
 
 
 EOF
@@ -202,17 +254,14 @@ else
     echo -e '** Loading All Subjects in Raw Data Directory: ' $rawdatadir'\n'
     echo -e '** List of Subjects with Raw Data: ' $subsfile'\n'
     cd $rawdatadir 
-    # the following line needs to be generalized
-    touch $subsfile
     ls -d !(*.*) > $subsfile
     subs=$(cat $subsfile)
-    echo -e '\n\nThe following Subjects will be loaded:  '
-    echo "$subs"
-    cd ~
 fi
+cd $subdir
 # ------------------------------------------------------------------------------------------------------------
 # Run Recon-All in Parallel
-echo "$(cat $subsfile)" | parallel recon-all -s {}"$group" -i "$rawdatadir/"{}"$rawdataregexp" -all -qcache -3T -sd $subdir -noappend -no-isrunning
+# todo :: perhaps add control flow for -i flag (only import data if it doesnt exist?)
+echo "$(cat $subsfile)" | parallel $parstr recon-all -s {}"$group" -i "$rawdatadir/"{}"/$rawdataregexp" $reconstr
 # ------------------------------------------------------------------------------------------------------------
 # End Timer
 de=$(date)
