@@ -4,6 +4,7 @@
 #	2. Output Run Time Statistics
 # 	3. Generate QC statistics for all completed subjects
 #   4. Generate failed subject list
+#   5. Generate html webpage with screenshots of subjects recons
 # ------------------------------------------------------------------------------------------------------------
 # Arguments 
 ds=$(date)
@@ -14,10 +15,10 @@ pattern="Anat/*.nii"
 group="w1"
 # options for recon-all and parallel
 # -- read from file to get around option parsing...
-#reconstr="-all -qcache -3T -sd $subdir -noappend"
-#parstr="--memfree 1G"
-#echo $reconstr > .reconopts
-#echo $parstr > .paropts
+reconstr="-all -qcache -3T -sd $subdir -noappend"			  #don't append to log, compute smoothed data, do all stages
+parstr="--bar --jobs 0 --joblog $subdir/recon-all-pargo.log"  #show progress bar, max jobs in parallel, output job log
+echo $reconstr > .reconopts
+echo $parstr > .paropts
 cat <<EOF
 
 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
@@ -31,8 +32,9 @@ EOF
 # ------------------------------------------------------------------------------------------------------------
 # Excecute Recon-all in Parallel
 export SUBJECTS_DIR=$subjectsdir  # Set default subjects directory to desired dataset
-#recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern -ro .reconopts -po .paropts
-recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern
+#recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern
+recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern -ro .reconopts -po .paropts
+
 
 # ------------------------------------------------------------------------------------------------------------
 # Generate QC stats

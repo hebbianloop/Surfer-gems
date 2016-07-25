@@ -176,24 +176,24 @@ while :; do
                 exit 
             fi
             ;;
-        #-ro|--reconopts)
-        #    if [ -n "$2" ]; then
-        #        reconstr=$(cat $2)
-        #        shift
-        #    else
-        #        echo "ERROR:  -ro --reconopts requires a non-empty option argument.\n" >&2
-        #        exit 
-        #    fi
-        #    ;;
-        #-po|--paropts)
-        #    if [ -n "$2" ]; then
-        #        parstr=$(cat $2)
-        #        shift
-        #    else
-        #        echo "ERROR:  -po --paropts requires a non-empty option argument.\n" >&2
-        #        exit 
-        #    fi
-        #    ;;                        
+        -ro|--reconopts)
+            if [ -n "$2" ]; then
+                reconstr=$(cat $2)
+                shift
+            else
+                echo "ERROR:  -ro --reconopts requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -po|--paropts)
+            if [ -n "$2" ]; then
+                parstr=$(cat $2)
+                shift
+            else
+                echo "ERROR:  -po --paropts requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;                        
         -?*)
             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
             ;;
