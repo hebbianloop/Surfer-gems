@@ -17,7 +17,7 @@ m='thickness'
 d='tab'
 a='aparc'
 s="subjects.list"
-t=''
+t='orig'
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 
@@ -54,7 +54,7 @@ cat <<EOF
                 Atlas           --      $a
                 Subject List    --      $s
                 Table label     --      $t
-                Table Name      --      $me.?h.$m.$y.table$t
+                Table Name      --      $me.?h.$m.$y.$t.table
 
 	IMPORTANT !!!
 
