@@ -4,7 +4,8 @@
 #	2. Output Run Time Statistics
 # 	3. Generate QC statistics for all completed subjects
 #   4. Generate failed subject list
-#   5. Generate html webpage with screenshots of subjects recons
+#	5. Generate aseg + aparc statistics
+#   6. Generate html webpage with screenshots of subjects recons
 # ------------------------------------------------------------------------------------------------------------
 # Arguments 
 ds=$(date)
@@ -19,6 +20,10 @@ reconstr="-all -qcache -3T -sd $subdir -noappend"			  #don't append to log, comp
 parstr="--bar --jobs 0 --joblog $subdir/recon-all-pargo.log"  #show progress bar, max jobs in parallel, output job log
 echo $reconstr > .reconopts
 echo $parstr > .paropts
+# Set default subjects directory to desired dataset
+export SUBJECTS_DIR=$subjectsdir  
+# ------------------------------------------------------------------------------------------------------------
+# Begin!
 cat <<EOF
 
 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
@@ -27,26 +32,104 @@ cat <<EOF
 				$me -- $ds
 
 ■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
-EOF
 
+EOF
 # ------------------------------------------------------------------------------------------------------------
 # Excecute Recon-all in Parallel
-export SUBJECTS_DIR=$subjectsdir  # Set default subjects directory to desired dataset
-#recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern
 recon-all-pargo -g $group -s $subjectslist -rd $rawdatadir -rexp $pattern -ro .reconopts -po .paropts
-
-
+# clean up
+rm .reconopts
+rm .paropts
 # ------------------------------------------------------------------------------------------------------------
 # Generate QC stats
 # todo :: parallelize FSQC-check
 qcdir="/Volumes/Archive.ADS/ADS/data/ads.subjects.trashcan.qc"
 FSQC-check -qd $qcdir -sd $subjectsdir -g $group -sf $subjectslist -fsl w1.failed.subjects.list > $subjectsdir/FSQC-autocheck.info
-
 # ------------------------------------------------------------------------------------------------------------
 # Generate HTML webpage with images of all subjects
 cd $SUBJECTS_DIR
 FSQC-makehtml
-
+# ------------------------------------------------------------------------------------------------------------
+# Generate concatenated statistics table
+ls -d !(*.*|fsaverage|) > w1.subjects.groupflag.list
+# ---------
+## surface
+# thickness
+FS-stats -y surf -m 'thickness' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'thickness' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# thickness std
+FS-stats -y surf -m 'thicknessstd' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'thicknessstd' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# volume
+FS-stats -y surf -m 'volume' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'volume' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# mean curv
+FS-stats -y surf -m 'meancurv' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'meancurv' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# gauscurv
+FS-stats -y surf -m 'gauscurv' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'gauscurv' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# folding index
+FS-stats -y surf -m 'foldind' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'foldind' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# curvature index
+FS-stats -y surf -m 'curvind' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'curvind' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# total area
+FS-stats -y surf -m 'area' -a 'aparc' -s 'w1.subjects.groupflag.list'
+FS-stats -y surf -m 'area' -a 'aparc.a2009s' -s 'w1.subjects.groupflag.list'
+# -------
+## volume
+FS-stats -y vol -m 'volume' -s 'w1.subjects.groupflag.list'
+FS-stats -y vol -m 'mean' -s 'w1.subjects.groupflag.list'
+FS-stats -y vol -m 'std' -s 'w1.subjects.groupflag.list'
+# ------------------------------------------------------------------------------------------------------------
+# Convert them all to xlsx 
+## volume
+ssconvert shad.volume.vol.table volume.table.xlsx
+ssconvert shad.mean.vol.table mean.volume.table.xlsx
+ssconvert shad.std.vol.table std.volume.table.xlsx
+## surface
+# thickness
+ssconvert shad.lh.thickness.aparc.table lh.thickness.aparc.table.xlsx
+ssconvert shad.rh.thickness.aparc.table rh.thickness.aparc.table.xlsx
+ssconvert shad.lh.thickness.aparc.a2009s.table lh.thickness.aparc.a2009s.table.xlsx
+ssconvert shad.rh.thickness.aparc.a2009s.table rh.thickness.aparc.a2009s.table.xlsx
+# thickness std
+ssconvert shad.lh.thicknessstd.aparc.table lh.thicknessstd.aparc.table.xlsx
+ssconvert shad.rh.thicknessstd.aparc.table rh.thicknessstd.aparc.table.xlsx
+ssconvert shad.lh.thicknessstd.aparc.a2009s.table lh.thicknessstd.aparc.a2009s.table.xlsx
+ssconvert shad.rh.thicknessstd.aparc.a2009s.table rh.thicknessstd.aparc.a2009s.table.xlsx
+# volume
+ssconvert shad.lh.volume.aparc.table lh.volume.aparc.table.xlsx
+ssconvert shad.rh.volume.aparc.table rh.volume.aparc.table.xlsx
+ssconvert shad.lh.volume.aparc.a2009s.table lh.volume.aparc.a2009s.table.xlsx
+ssconvert shad.rh.volume.aparc.a2009s.table rh.volume.aparc.a2009s.table.xlsx
+# mean curv
+ssconvert shad.lh.meancurv.aparc.table lh.meancurv.aparc.table.xlsx
+ssconvert shad.rh.meancurv.aparc.table rh.meancurv.aparc.table.xlsx
+ssconvert shad.lh.meancurv.aparc.a2009s.table lh.meancurv.aparc.a2009s.table.xlsx
+ssconvert shad.rh.meancurv.aparc.a2009s.table rh.meancurv.aparc.a2009s.table.xlsx
+# gaussian curv
+ssconvert shad.lh.gauscurv.aparc.table lh.gauscurv.aparc.table.xlsx
+ssconvert shad.rh.gauscurv.aparc.table rh.gauscurv.aparc.table.xlsx
+ssconvert shad.lh.gauscurv.aparc.a2009s.table lh.gauscurv.aparc.a2009s.table.xlsx
+ssconvert shad.rh.gauscurv.aparc.a2009s.table rh.gauscurv.aparc.a2009s.table.xlsx
+# folding index
+ssconvert shad.lh.foldind.aparc.table lh.foldind.aparc.table.xlsx
+ssconvert shad.rh.foldind.aparc.table rh.foldind.aparc.table.xlsx
+ssconvert shad.lh.foldind.aparc.a2009s.table lh.foldind.aparc.a2009s.table.xlsx
+ssconvert shad.rh.foldind.aparc.a2009s.table rh.foldind.aparc.a2009s.table.xlsx
+# curvature index
+ssconvert shad.lh.curvind.aparc.table lh.curvind.aparc.table.xlsx
+ssconvert shad.rh.curvind.aparc.table rh.curvind.aparc.table.xlsx
+ssconvert shad.lh.curvind.aparc.a2009s.table lh.curvind.aparc.a2009s.table.xlsx
+ssconvert shad.rh.curvind.aparc.a2009s.table rh.curvind.aparc.a2009s.table.xlsx
+# total area
+ssconvert shad.lh.area.aparc.table lh.area.aparc.table.xlsx
+ssconvert shad.rh.area.aparc.table rh.area.aparc.table.xlsx
+ssconvert shad.lh.area.aparc.a2009s.table lh.area.aparc.a2009s.table.xlsx
+ssconvert shad.rh.area.aparc.a2009s.table rh.area.aparc.a2009s.table.xlsx
 # ------------------------------------------------------------------------------------------------------------
 # Completed~!
 cat <<EOF

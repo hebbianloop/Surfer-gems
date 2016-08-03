@@ -17,6 +17,7 @@ m='thickness'
 d='tab'
 a='aparc'
 s="subjects.list"
+t=''
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 
@@ -29,7 +30,7 @@ cat <<EOF
 
 	Options  :: 
 	-h --help 		displays help
-	-t --tablename 		name of generated table 
+	-t --tablename 		substring label for table
 	-y --tabletype 		surface (surf) or volumetric (vol) statistics
 	-m --measure 		brain measurement, varies by table type 
                                     surface: (volume, thickness, thicknessstd, meancurv, gauscurv foldind, curvind, area)
@@ -45,6 +46,15 @@ cat <<EOF
 
 	The script will generate a table file named aparc.stats.table in the subjects directory for both of the
 	lh & rh thickness measurements using the default aparc atlas based on the Killiany/Desikan parcellation. 
+
+                Table type      --      $y
+                Hemispheres     --      $h
+                Measure         --      $m
+                Delimiter       --      $d
+                Atlas           --      $a
+                Subject List    --      $s
+                Table label     --      $t
+                Table Name      --      $me.?h.$m.$y.table$t
 
 	IMPORTANT !!!
 
@@ -138,16 +148,19 @@ done
 if [ -z "$SUBJECTS_DIR" ]; then
 	echo "ERROR: SUBJECTS_DIR ENVIRONMENTAL VARIABLE NOT DEFINED!!"
 	echo " -- please specify \$SUBJECTS_DIR = ???? "
+    exit
 fi
 check=$(which aparcstats2table)
 if [ ! "$check" ]; then
 	echo "ERROR: FreeSurfer utility: aparcstats2table could not be found"
 	echo "-- You may need to reinstall FreeSurfer"
+    exit
 fi
 check=$(which asegstats2table)
 if [ ! "$check" ]; then
 	echo "ERROR: FreeSurfer utility: asegstats2table could not be found"
 	echo "-- You may need to reinstall FreeSurfer"
+    exit
 fi
 # ------------------------------------------------------------------------------------------------------------
 # Begin Script
@@ -159,17 +172,16 @@ cat <<EOF
 
 	GENERATING FREESURFER MORPHOMETRIC STATISTICS TABLE :: run by $me  -- $dte
 
-		Subjects Directory              --    $SUBJECTS_DIR
-		Table type 		        --  	$y
-		Measure 			--    $m
+		Subjects Directory      --    $SUBJECTS_DIR
 
-        Subjects to be loaded :: 	$s	
-
-EOF
-
-echo $subs
-
-cat <<EOF
+                Table type      --      $y
+                Hemispheres     --      $h
+                Measure         --      $m
+                Delimiter       --      $d
+                Atlas           --      $a
+                Subject List    --      $s
+                Table Label     --      $t
+                Table Name      --      $me.?h.$m.$y.table$t
 
 =========================================================================================================================
 
@@ -177,7 +189,7 @@ EOF
 # Create Table
 # Volume
 if [ $y == 'vol' ]; then
-	t=$SUBJECTS_DIR/"$me.$m.$y.table"
+	t=$SUBJECTS_DIR/"$me.$m.$y.$t.table"
 	# In case user forgot to input measure, use default volume measure
 	if [ $m  == "thickness" ]; then
 		m='volume'
@@ -187,18 +199,18 @@ fi
 # Surface
 if [ $y == 'surf' ]; then
 	if [ $h = 'both' ]; then
-		t=$SUBJECTS_DIR/"$me.lh.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.lh.$m.$a.$t.table"	
 		aparcstats2table --hemi lh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
-		t=$SUBJECTS_DIR/"$me.rh.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.rh.$m.$a.$t.table"	
 		aparcstats2table --hemi rh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
 	else
-		t=$SUBJECTS_DIR/"$me.$h.$m.$a.table"	
+		t=$SUBJECTS_DIR/"$me.$h.$m.$a.$t.table"	
 		aparcstats2table --hemi $h -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip
 	fi
 fi
 
 
-#  get-fs-stats.sh
+#  FS-stats
 #  
 #
 #  Created by Shady El Damaty on 11/3/15.

@@ -1,8 +1,7 @@
 #!/bin/bash
 # Import data and parallelize recon-all on a batch of subjects
 #
-# TODO :: fix option parsing for recon & parallel options input
-#	   		--> only solution I can think of is to read from file
+# TODO :: only supports raw data dir where subjects have their own dirs
 #	Shady El Damaty 22 July 2016
 # ------------------------------------------------------------------------------------------------------------
 # System default arguments
@@ -30,7 +29,7 @@ show_help() {
 
     Usage  ::  ${0##*/} [-h|--help]  [-sd|--subjectdir PATH] [-s|--subjlist FILE] [-g|--group STRING] ...
     		 				[-rd|--rawdatadir PATH] [-rexp|--regexp PATTERN] ...
-    		 				[-ro|--reconopts STRING] [-po|--paropts STRING]
+    		 				[-ro|--reconopts FILE] [-po|--paropts FILE]
                                 
     Invokes GNU Parallel to parallelize recon-all on a batch of subjects. Supports grouping of subjects 
     for different treatments or time points.
@@ -109,8 +108,7 @@ show_help() {
         The default recon options are to run all stages assuming a 3T seimens scanner.  Log files are not appended
         from successive runs.  Smoothed data for qdec analysis is also computed.
 
-        The default parallel options are to only run with 1GB of free memory, output a progress bar and save
-        a job log in the subjects directory.
+        The default parallel options are to output a progress bar and save a job log in the subjects directory.
 
     IMPORTANT!
 
@@ -256,6 +254,8 @@ else
     cd $rawdatadir 
     ls -d !(*.*) > $subsfile
     subs=$(cat $subsfile)
+    # you can add a conditional here if subs are empty then read assuming no subject dirs and that
+    # each file in the raw data folder is a .nii file with the subject name as the file name of the image
 fi
 cd $subdir
 # ------------------------------------------------------------------------------------------------------------
