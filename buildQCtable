@@ -75,7 +75,7 @@ done
 # Initialize Data Table
 touch "$qcdatatable.txt"
 # Build tab delimited header (ID lhCNR rhCNR lhEN rhEN TalCorr)
-header= printf "SubjectID\tlhCNR\trhCNR\tlhEN\trhEN\tTalCorr\n" > "$qcdatatable.txt"
+header= printf "SubjectID\trecon-success\tlhCNR\trhCNR\tlhEN\trhEN\tTalCorr\n" > "$qcdatatable.txt"
 echo $header
 # ------------------------------------------------------------------------------------------------------------
 # Loop across subjects and extract information
@@ -86,13 +86,13 @@ for sub in $subs; do
 	str=''
 	if [ ! -f $qcdir/$sub/recon-all-fail.log ]; then
 		# build first part of string (ID CNR)
-		str=$(cat $qcdir/$sub/CNR.log | grep "[?h] CNR" | cut -d ' ' -f4 | xargs printf "$sub\t%s\t%s\t")
+		str=$(cat $qcdir/$sub/CNR.log | grep "[?h] CNR" | cut -d ' ' -f4 | xargs printf "$sub\t1\t%s\t%s")
 		# build second part of string (EN)
 		str="$str$(cat "$qcdir/$sub/euler-characteristic.log" | grep  -o '[lr]heno = .*' | perl -lne 'print $1 if /=\s*(.*)/' | awk '{print $1,$4}' | tr -d ',' | xargs printf "\t%s\t%s\t")"
 		# build last part of string (TalCorr)
 		str="$str$(cat $qcdir/$sub/talairach-spatial-correlation.log | cut -d ':' -f2 | awk '{print $NF}' | xargs printf "%s\n")"
 	else
-		str=$(printf "$sub\t\t\t\t\t\n")
+		str=$(printf "$sub\t0\t\t\t\t\t\n")
 	fi
 	echo $str >> "$qcdatatable.txt"
 	echo $str
