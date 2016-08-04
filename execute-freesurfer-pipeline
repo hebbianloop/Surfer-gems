@@ -45,6 +45,8 @@ rm .paropts
 # todo :: parallelize FSQC-check
 qcdir="/Volumes/Archive.ADS/ADS/data/ads.subjects.trashcan.qc"
 FSQC-check -qd $qcdir -sd $subjectsdir -g $group -sf $subjectslist -fsl w1.failed.subjects.list > $subjectsdir/FSQC-autocheck.info
+# now generate table of all these stats
+buildQCtable -i $qcdir -o $qcdir/w1-qc
 # ------------------------------------------------------------------------------------------------------------
 # Generate HTML webpage with images of all subjects
 cd $SUBJECTS_DIR
