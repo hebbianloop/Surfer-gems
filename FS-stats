@@ -181,7 +181,7 @@ cat <<EOF
                 Atlas           --      $a
                 Subject List    --      $s
                 Table Label     --      $t
-                Table Name      --      $me.?h.$m.$y.table$t
+                Table Name      --      $me.?h.$m.$y.$t.table
 
 =========================================================================================================================
 
@@ -199,10 +199,10 @@ fi
 # Surface
 if [ $y == 'surf' ]; then
 	if [ $h = 'both' ]; then
-		t=$SUBJECTS_DIR/"$me.lh.$m.$a.$t.table"	
-		aparcstats2table --hemi lh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
-		t=$SUBJECTS_DIR/"$me.rh.$m.$a.$t.table"	
-		aparcstats2table --hemi rh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip	
+		tn="$me.lh.$m.$a.$t.table"	
+		aparcstats2table --hemi lh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $SUBJECTS_DIR/$tn -d $d -v --skip	
+		tn="$me.rh.$m.$a.$t.table"	
+		aparcstats2table --hemi rh -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $SUBJECTS_DIR/$tn -d $d -v --skip	
 	else
 		t=$SUBJECTS_DIR/"$me.$h.$m.$a.$t.table"	
 		aparcstats2table --hemi $h -m $m --subjectsfile $SUBJECTS_DIR/$s -p $a -t $t -d $d -v --skip

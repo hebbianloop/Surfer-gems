@@ -130,6 +130,12 @@ ssconvert shad.lh.area.aparc.noedits.table lh.area.aparc.table.xlsx
 ssconvert shad.rh.area.aparc.noedits.table rh.area.aparc.table.xlsx
 ssconvert shad.lh.area.aparc.a2009s.noedits.table lh.area.aparc.a2009s.table.xlsx
 ssconvert shad.rh.area.aparc.a2009s.noedits.table rh.area.aparc.a2009s.table.xlsx
+#  Store EXCEL files in tables dir
+## move everything to tables folder
+if [ ! -d "/Volumes/Archive.ADS/ADS/data/tables/freesurfer/$ds" ]; then
+	mkdir -p "/Volumes/Archive.ADS/ADS/data/tables/freesurfer/$ds"
+fi
+mv *.xlsx "/Volumes/Archive.ADS/ADS/data/tables/freesurfer/$ds"
 # ------------------------------------------------------------------------------------------------------------
 # Completed~!
 cat <<EOF
