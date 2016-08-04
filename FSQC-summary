@@ -28,7 +28,7 @@ else
     subject=$subjid
 fi
 # Spit out all results to the local ADS-tutorial QC folder
-outdir="$usrpth/Projects/ADS-tutorial/data/QC"
+outdir="$usrpth/Projects/FSQC-summary"
 
 # --------------------------------------------------------------------------------------------
 # Help Function 
@@ -66,10 +66,7 @@ the specified output directory containing information regarding:
 
         The script checks if the variable subjid is previously defined.  If not then
         it assigns bert as the default subject.  All summary statistics are output to
-        ~/Projects/ADS-tutorial.
-
-        ** The CFMI QC user can call this function without any inputs as long as they 
-           define a subjid variable.
+        ~/Projects/FSQC-summary.
 
 EOF
 }
