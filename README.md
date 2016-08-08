@@ -15,7 +15,7 @@ Simply clone this repository and add it to your bash path by including the follo
 - `recon-all-go`      -- Serial script for batch FreeSurfer processing
 - `recon-all-pargo`   -- GNU parallel wrapper for batch FreeSurfer processing
 - `recon-all-base`    -- Serial script for batch longitudinal FreeSurfer processing
-- `execute_freesurfer_pipeline` -- Script that executes all freesurfer pipeline steps (recon-all-pargo, FSQC-check, FSQC-makehtml, FS-stats)
+- `execute_freesurfer_pipeline` -- Script that executes all freesurfer pipeline steps
 - doc               -- LaTeX folder for FreeSurfer documentation
 
 ## History
