@@ -19,7 +19,7 @@ Simply clone this repository and add it to your bash path by including the follo
 - doc               -- LaTeX folder for FreeSurfer documentation
 
 ## History
-A more complete version history can be found at www.github.com/seldamat/SNIR.  All of these executables were copied from the SNIR repo and consolidated into a FreeSurfer specific repository.  The developer has committed to updating this repository first for the included software and documentation.
+A more complete version history can be found at www.github.com/seldamat/SNIR.  Many of these executables were copied from the SNIR repo and consolidated into a FreeSurfer-specific repository.  The developer has committed to updating this repository first for the included software and documentation.
 
 ## Contributing
 1. Fork it!
