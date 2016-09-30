@@ -90,7 +90,7 @@ show_help() {
     Default behavior ::  
         
         Subjects Directory         --           $subdir
-        Grouping Pattern           --           $group (empty by default)
+        Grouping Pattern           --           $group
         Subjects List Name         --           $subsfile
         Raw Data Directory         --           $rawdatadir
         Raw Data Pattern           --           $rawdatadir<subjid>/$rawdataregexp
