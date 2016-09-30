@@ -12,82 +12,80 @@ ds=$(date)
 s=$(date -u "+%s")                              
 # Program defaults
 subdir=$SUBJECTS_DIR                            # name of folder where subject data will live, can be empty for default SUBJECTS_DIR
-group=''                                        # group name, can be empty
+group='w1'                                        # group name, can be empty
 rawdatadir='./'                                 # name of directory in project directory where raw data live
-rawdataregexp="Anat/*.nii"					    # subdirectory
+rawdataregexp="DTI-w1-1/"	      			    # subdirectory
 subsfile='subjects.list'                        # what to call list of subjects
-reconstr="-all -qcache -3T -sd $subdir -noappend"
-#parstr="--progress --joblog $subdir/recon-all-pargo.log --memfree 1G"
-parstr="--progress --joblog $subdir/recon-all-pargo.log"
+parstr="--progress --joblog $subdir/dtrecon-pargo.log"
+reconstr='--o dti'
 ## Enable advanced pattern matching
 shopt -s extglob
-#
 # ------------------------------------------------------------------------------------------------------------
 # Help Function
 show_help() {
     cat <<EOF
 
     Usage  ::  ${0##*/} [-h|--help]  [-sd|--subjectdir PATH] [-s|--subjlist FILE] [-g|--group STRING] ...
-    		 				[-rd|--rawdatadir PATH] [-rexp|--regexp PATTERN] ...
-    		 				[-ro|--reconopts FILE] [-po|--paropts FILE]
+                            [-rd|--rawdatadir PATH] [-rexp|--regexp PATTERN] ...
+                            [-ro|--reconopts FILE] [-po|--paropts FILE]
                                 
-    Invokes GNU Parallel to parallelize recon-all on a batch of subjects. Supports grouping of subjects 
+    Invokes GNU Parallel to parallelize dt_recon on a batch of subjects. Supports grouping of subjects 
     for different treatments or time points.
 
     Options :: 
     -h    --help           displays help
-    -sd   --subjectdir     output of recon-all will be saved here (can be empty)
+    -sd   --subjectdir     output of dt_recon will be saved here (can be empty)
     -s    --subjlist       name of subject list to run reconstruction on (created if not defined)
     -g    --group          grouping flag for subjects (can be empty)     
     -rd   --rawdatadir     absolute path to raw data
     -rexp --regexp         regular expression for path to data
 
     Special Options ::
-    -ro --reconopts 	   file containing options for recon-all
-    -po --paropts 		   file containing options for parallel
+    -ro --reconopts        file containing options for recon-all
+    -po --paropts          file containing options for parallel
     
 
     Example :: 
 
      1. The following call sets the subjects directory to the default defined in .bash_profile. 
         Raw data is looked for in the current directory ('./'). Data assumed to be organized 
-        for each subject under the following regular expression "Anat/*.nii"
+        for each subject under the following regular expression "$rawdataregexp"
 
-             recon-all-pargo 
+             ${0##*/}
 
      2. The following call sets the subjects directory to the default defined in .bash_profile.
         Raw data is defined as an input argument.  Images are assumed to be .img.
 
-            recon-all-pargo -rd /Volumes/CFMI/FreeSurfer/data/raw -rexp "MPRAGE/*.img"
+            ${0##*/} -rd /Volumes/CFMI/FreeSurfer/data/raw -rexp "DTI-w1-1/*.img"
 
      3. The following call sets the subjects directory to default.  Raw data is defined as input. 
         Images are assumed to be .img.  Processed subjects are appended with group flag "alzheimer"
 
-            recon-all-pargo -rd /Volumes/CFMI/FreeSurfer/data/raw -rexp "MPRAGE/*.img" -g 'alzheimer'
+            ${0##*/} -rd /Volumes/CFMI/FreeSurfer/data/raw -rexp "DTI-w1-1/*.img" -g 'alzheimer'
 
      4. Given the existence of a project directory: /Volumes/CFMI/FreeSurfer/data.
             This directory is further assumed to contain:
                                                             ./ads.subjects
                                                             ./ads.subjects/subjects.list
-                                                            ./raw/w1/<subjid>/Anat/Anat*.nii
+                                                            ./raw/<subjid>/DTI-w1-1/*.nii.gz
 
          The following call will set the subject directory as defined, import from the specified raw data
          directory and only process those images defined in the subjects list.
 
-            recon-all-pargo -sd /Volumes/CFMI/FreeSurfer/data/ads.subjects  \ 
-                            -rd /Volumes/CFMI/FreeSurfer/data/raw/w1 \ 
-                            -rexp "/Anat/*.nii" \
+            ${0##*/} -sd /Volumes/CFMI/FreeSurfer/data/ads.subjects  \ 
+                            -rd /Volumes/CFMI/FreeSurfer/data/raw \ 
+                            -rexp "/DTI-w1-1/*.nii" \
                             -s subjects.list \ 
                             -g w1
 
      5. Run recon-all with modified arguments (ex. single stage)
-     		echo "-autorecon1" > .reconopts
-        	recon-all-pargo -ro .reconopts
+            echo "--notal --no-reg" > .reconopts
+            ${0##*/} -ro .reconopts
 
      6. Run with specified paralell options
 
-     		echo "--joblog --progress analysis-1.log --memfree 3G" > .paropts
-     		recon-all-pargo -po .paropts
+            echo "--joblog --progress analysis-1.log --memfree 3G" > .paropts
+            ${0##*/} -po .paropts
 
     Default behavior ::  
         
@@ -96,17 +94,16 @@ show_help() {
         Subjects List Name         --           $subsfile
         Raw Data Directory         --           $rawdatadir
         Raw Data Pattern           --           $rawdatadir<subjid>/$rawdataregexp
-        Recon Options 		   -- 		$reconstr
-        Parallel Options 	   -- 		$parstr
+        Recon Options          --       $reconstr
+        Parallel Options       --       $parstr
 
         Subject directory is set to SUBJECTS_DIR. No grouping variable is defined. Raw data is current working
         directory. The script assumes raw data directory has folders for each subject.  Each subject is assumed
-        to have their anatomical scan organized under the convention "Anat/*.nii." Looks for a subject list 
+        to have their DWI data organized under the convention "DTI-$group-1/*.nii.gz" Looks for a subject list 
         in the SUBJECTS_DIR.  If the list does not exist, one is created based on the directory names in the 
         raw subject directory. Will not run if necessary paths are not detected.
 
-        The default recon options are to run all stages assuming a 3T seimens scanner.  Log files are not appended
-        from successive runs.  Smoothed data for qdec analysis is also computed.
+        The default recon options are to run all processing stages and to save output to directory named 'dti'
 
         The default parallel options are to output a progress bar and save a job log in the subjects directory.
 
@@ -207,13 +204,13 @@ done
 if [ ! $subdir ]; then
 	subdir=$SUBJECTS_DIR
 fi
+# delimit group from subject name...
+if [ ! -z $group ]; then
+    group="-$group"
+fi
 ## set subsfile path and subsfilename
 subsfilename=$subsfile
 subsfile=$subdir'/'$subsfilename
-# delimit group from subject name...
-if [ ! -z $group ]; then
-	group="-$group"
-fi
 # ------------------------------------------------------------------------------------------------------------
 # Output variables to terminal
 cat <<EOF
@@ -225,8 +222,8 @@ cat <<EOF
 🔹 RAW DATA DIRECTORY                  =  $rawdatadir
 🔹 RAW DATA PATTERN 		      =  $rawdatadir/<subjid>/$rawdataregexp
 🔹 SUBJECT LIST FILE                   =  $subsfile
-🔹 RECON OPTIONS                       =  $reconstr
 🔹 PARALLEL OPTIONS                    =  $parstr
+🔹 DT_RECON OPTIONS                    =  $reconstr
 
 
 EOF
@@ -261,7 +258,7 @@ cd $subdir
 # ------------------------------------------------------------------------------------------------------------
 # Run Recon-All in Parallel
 # todo :: perhaps add control flow for -i flag (only import data if it doesnt exist?)
-echo "$(cat $subsfile)" | parallel $parstr recon-all -s {}"$group" -i "$rawdatadir/"{}"/$rawdataregexp" $reconstr
+echo "$(cat $subsfile)" | parallel $parstr dt_recon -s {}"$group" -i "$rawdatadir/"{}"/"$rawdataregexp"*.nii.gz" --b "$rawdatadir/"{}"/"$rawdataregexp"*.bvec" --f "$rawdatadir/"{}"/"$rawdataregexp"*.bval" $reconstr
 # ------------------------------------------------------------------------------------------------------------
 # End Timer
 de=$(date)
@@ -269,8 +266,8 @@ e=$(date -u "+%s")
 d=$((e-s))
 # ------------------------------------------------------------------------------------------------------------
 # Save run time and hardware statistics
-statsfn=$subdir/"recon-all-pargo.completed.$(date "+%Y-%m-%d@%H:%M:%S").info"
-echo -e "📝 Recon-All Stats & System Profile\n" >> $statsfn
+statsfn=$subdir/"dtrecon-pargo.completed.$(date "+%Y-%m-%d@%H:%M:%S").info"
+echo -e "📝 Diffusion Tensor Reconstruction Stats & System Profile\n" >> $statsfn
 echo -e "$me@$(uname -n)" >> $statsfn
 echo -e "$(uname -v)\n" >> $statsfn
 echo -e "$(wc -l $subsfile | cut -f 1 -d " ") subjects processed\n" >> $statsfn
