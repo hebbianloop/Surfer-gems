@@ -94,8 +94,8 @@ show_help() {
         Subjects List Name         --           $subsfile
         Raw Data Directory         --           $rawdatadir
         Raw Data Pattern           --           $rawdatadir<subjid>/$rawdataregexp
-        Recon Options          --       $reconstr
-        Parallel Options       --       $parstr
+        Recon Options              --           $reconstr
+        Parallel Options           --           $parstr
 
         Subject directory is set to SUBJECTS_DIR. No grouping variable is defined. Raw data is current working
         directory. The script assumes raw data directory has folders for each subject.  Each subject is assumed
