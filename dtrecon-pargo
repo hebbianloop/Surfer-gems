@@ -16,8 +16,9 @@ group='w1'                                        # group name, can be empty
 rawdatadir='./'                                 # name of directory in project directory where raw data live
 rawdataregexp="DTI-w1-1/"	      			    # subdirectory
 subsfile='subjects.list'                        # what to call list of subjects
-parstr="--progress --joblog $subdir/dtrecon-pargo.log"
-reconstr='--o dti'
+#parstr="--progress --joblog $subdir/dtrecon-pargo.log"
+parstr="--bar --jobs 0 --joblog $subdir/dtrecon-pargo.log"
+reconstr=''
 ## Enable advanced pattern matching
 shopt -s extglob
 # ------------------------------------------------------------------------------------------------------------
@@ -257,8 +258,10 @@ fi
 cd $subdir
 # ------------------------------------------------------------------------------------------------------------
 # Run Recon-All in Parallel
+#str="parallel $parstr dt_recon --s {}"$group" --i $rawdatadir{}"/"$rawdataregexp"*.nii.gz" --b $rawdatadir{}"/"$rawdataregexp"*.bvec" --f $rawdatadir{}"/"$rawdataregexp"*.bval" $reconstr"
+#echo $str
 # todo :: perhaps add control flow for -i flag (only import data if it doesnt exist?)
-echo "$(cat $subsfile)" | parallel $parstr dt_recon -s {}"$group" -i "$rawdatadir/"{}"/"$rawdataregexp"*.nii.gz" --b "$rawdatadir/"{}"/"$rawdataregexp"*.bvec" --f "$rawdatadir/"{}"/"$rawdataregexp"*.bval" $reconstr
+echo "$(cat $subsfile)" | parallel $parstr dt_recon --s {}$group --i $rawdatadir'/'{}'/'$rawdataregexp'*.nii.gz' --b $rawdatadir'/'{}'/'$rawdataregexp'*.bval' $rawdatadir'/'{}'/'$rawdataregexp'*.bvec' --o $SUBJECTS_DIR'/'{}$group'/dti' $reconstr
 # ------------------------------------------------------------------------------------------------------------
 # End Timer
 de=$(date)
