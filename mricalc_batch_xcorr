@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# given two lists, compute the cross correlation between every image
+
+list1=/Volumes/ADS.Archive.1/ADS/analysis/conn.rest/xcorr/list-1.info
+list2=/Volumes/ADS.Archive.1/ADS/analysis/conn.rest/xcorr/list-2.info
+
+images1=$(cat $list1)
+images2=$(cat $list2)
+
+for i in
