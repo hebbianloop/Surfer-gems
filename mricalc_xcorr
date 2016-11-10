@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# todo -- add DICE coefficient option?
+
 
 # Default Arguments
 cd ~/..
@@ -20,8 +20,8 @@ savedir=$usrpth/mricalc_xcorr
 mask="$SPM_PATH/toolbox/FieldMap/brainmask.nii"
 # default is silent
 showinfo=''
-# default method is pearson's
-p=''
+# default method is pearson
+p='pearson'
 d=''
 j=''
 # ------------------------------------------------------------------------------------------------------------
@@ -30,30 +30,42 @@ j=''
 show_help() {
 cat <<EOF
 	
-	Usage :: ${0##*/} [-h|--help] [-x--image1 FILE] [-y|--image2 FILE] [-m|--mask FILE] 
-							[-s|--savedir PATH] [-d|--dice] [-p|--pearson] [-i|--showinfo]
+	Usage :: ${0##*/} [-x--image1 FILE] [-y|--image2 FILE] [-m|--mask FILE] [-s|--savedir PATH] ...
+	 						[-d|--dice] [-p|--pearson] [-j|--jaccard]
+	 						[-i|--showinfo] [-h|--help]
 	
-	Use this program to compute the spatial cross correlation p(X,Y) between images X and Y within 
-	a user-defined mask. Using a mask allows the spatial correlation to be computed across 
-	appropriate data points. In other words, we can use the mask to exclude points outside of the 
-	image region of interest that would never be correlated anyway! (i.e. zero-padded areas)
+	Use this program to compute the spatial cross correlation p(X,Y) between two binarized images, X and Y, 
+	within a user-defined mask. Several correlation metrics are available (Pearson, Jaccard, Dice)
+
+	🔬  The use of a mask allows the spatial correlation to be computed across appropriate data points. 
+	    In other words, we can use the mask to exclude points outside of the image region of interest that 
+	    would never be correlated anyway! (i.e. out of field of view or interest)
 
 	Options  :: 
 
-		-h --help		displays help
-		-x --image1 		full path to first image
-		-y --image2 		full path to second image
-		-m --mask		full path to mask
-		-s --savedir 		all outputs and intermediate files will be saved here
-		-i --showinfo 		print information about input files to the screen (useful for debugging)
-		-k --pearson 	use this flag to indicate calculation of pearson's coefficient
+		inputs.
+		-x --image1 	[FILE] 		full path to first image
+		-y --image2 	[FILE]		full path to second image
+		-m --mask   	[FILE]		full path to mask
+		-s --savedir 	[DIRECTORY]	all outputs and intermediate files will be saved here
+				
+		methods.
+		-p --pearson 	use this flag to indicate calculation of pearson's coefficient
 		-d --dice 		use this flag to indicate calculation of dice coefficient
-									
+		-j --jaccard    use this flag to indicate calculation of jaccard coefficient
+
+		information.
+		-i --showinfo 		print information about input files to the screen (useful for debugging)
+		-h --help			displays help									
+	
 	Default Behavior ::
 	
-		This program will use the spm12 brain mask by default. If the mask cannot be found then
+		Pearson's Correlation Coefficient is computed by default.
+
+		The spm12 brain mask is selected by default. If the mask cannot be found then
 		the user will be prompted to specify the full path to a mask.  If you do not want to mask
-		the image then you can specify an empty mask.
+		the image then you can specify the intersection between both images as the mask. An empty
+		file also works.
 
 		All ouputs are saved to the home directory by default unless otherwise specified.
 
@@ -61,12 +73,28 @@ cat <<EOF
             	    Image 2	        --      $image2
             	    Mask File 		--	$mask
             	    Save directory	--	$savedir           
-            	    method
+            	    methods 		--  	$p $k $j
 
         	Information will not be printed by default! You must specify this if desired with the -i flag. 
-        	Pearson's Correlation Coefficient is computed by default.
 
+    	Example Usage ::
+
+    		📌  Compute Pearson's cross correlation between two images and put the results in ./results
+
+    			mricalc_xcorr -x ~/DMN_estimate.nii -y ~/DMN_canonical.nii -s ./results
+
+    		📌  Compute all correlative metrics
+
+    			mricalc_xcorr -x ~/DMN_estimate.nii -y ~/DMN_canonical.nii -s ./results -p -d -j
+
+	    	📌  Use a custom mask
+
+			mricalc_xcorr -x ~/DMN_estimate.nii -y ~/DMN_canonical.nii -s ./results -m ~/brainmask.nii			    		
+    
+    ..........................................................................................................
+    
     👓   Helpful Information ::
+
 
       * Pearson's Correlation Coefficient is defined as the covariance between X and Y divided by
         the product of the standard deviation of X and Y.  
@@ -95,6 +123,14 @@ cat <<EOF
 				    __________________
 
 				         |X| + |Y|
+
+     * The JACCARD similarity index is computed as the ratio between the intersecting and union of images
+       X and Y.  This is defined as:
+
+	    			j = 	    | X ∩ Y |
+	    				_________________
+
+	    			    	    | X U Y |
 EOF
 }
 # ------------------------------------------------------------------------------------------------------------
@@ -256,6 +292,11 @@ else
 	fi
 fi
 
+# Binarize Images
+echo -e "\n Binarizing Images ... "
+fslmaths $image1 -bin $savedir/$conimage1-binarized-conformed.nii
+fslmaths $image1 -bin $savedir/$conimage1-binarized-conformed.nii
+
 # ------------------------------------------------------------------------------------------------------------
 if [ ! -z $p ]; then
 	echo -e "** Calculating Pearson's Correlation Coefficient\n"
@@ -334,12 +375,13 @@ if [ ! -z $j ]; then
 	numunion=$(3dBrickStat -non-zero -count -mask $mask $conimage1.$conimage2.union.nii.gz 2> /dev/null)
 	jaccard=$(echo "scale=4; $numinter/$numunion"| bc -l)
 fi
+## TODO!!
 ## MUTUAL INFORMATION
-hx=$(fslstats $image1 -k $mask -e)
-hy=$(fslstats $image2 -k $mask -e)
+#hx=$(fslstats $image1 -k $mask -e)
+#hy=$(fslstats $image2 -k $mask -e)
 # Generate union to calculate joint entropy
-fslmaths $image1 -add $image2 -bin $savedir/"$conimage1.$conimage2.union"
-hxy=$(fslstats $savedir/"$conimage1.$conimage2.union" -k $mask -e)
+#fslmaths $image1 -add $image2 -bin $savedir/"$conimage1.$conimage2.union"
+#hxy=$(fslstats $savedir/"$conimage1.$conimage2.union" -k $mask -e)
 # ------------------------------------------------------------------------------------------------------------
 # Create an Output File Containing the Statistics
 echo -e "\n 📝  Printing Stats\n"
@@ -388,5 +430,4 @@ echo -e "user \t\t $me\n" >> $statsfile
 #					  **  checks images to make sure they are in the same space
 #					  **  now deletes intermediate files used to compute pearson's r
 #					  **  added method functionality for specifying formula for computing xcorr
-#					  TODO :: add Dice & Other overlap/similiarity metrics
 ################################################
