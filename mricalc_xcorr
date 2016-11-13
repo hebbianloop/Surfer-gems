@@ -34,7 +34,7 @@ cat <<EOF
 	 						[-d|--dice] [-p|--pearson] [-j|--jaccard]
 	 						[-i|--showinfo] [-h|--help]
 	
-	Use this program to compute the spatial cross correlation p(X,Y) between two binarized images, X and Y, 
+	Use this program to compute the spatial cross correlation p(X,Y) between two images, X and Y, 
 	within a user-defined mask. Several correlation metrics are available (Pearson, Jaccard, Dice)
 
 	🔬  The use of a mask allows the spatial correlation to be computed across appropriate data points. 
@@ -205,7 +205,7 @@ while [ ! -e $SPM_PATH ]; do
 	read -p "Please provide the full path to the mask" mask
 done
 # create save directory if it does not exist
-if [ ! -d "$savedir" ]; then
+if [ ! -d "$savedir" ] || [ ! -d "$savedir/temp" ]; then
 	echo -e " 📂 Saving Results in :: $savedir"
 	mkdir -p "$savedir/temp"
 	cd $savedir
@@ -264,8 +264,11 @@ fi
 # Match Image Properties (must be same size and space)
 
 echo -e "\n\n 🔧 Conforming Input Images to Mask Dimensions & Orientation"
-3dresample -master $mask -inset $image1 -prefix $savedir/$conimage1-conformed.nii 2> /dev/null
-3dresample -master $mask -inset $image2 -prefix $savedir/$conimage2-conformed.nii 2> /dev/null
+if [ -e $savedir/$conimage2-conformed.nii ] || [ -e $savedir/$conimage1-conformed.nii ]; then
+	rm $savedir/$conimage1-conformed.nii $savedir/$conimage2-conformed.nii
+fi
+3dresample -master $mask -inset $image1 -prefix "$savedir/$conimage1-conformed.nii" 2> /dev/null
+3dresample -master $mask -inset $image2 -prefix "$savedir/$conimage2-conformed.nii" 2> /dev/null
 
 image1=$savedir/$conimage1-conformed.nii
 image2=$savedir/$conimage2-conformed.nii
@@ -300,12 +303,12 @@ else
 fi
 
 # Binarize Images
-echo -e "\n Binarizing Images ... "
-fslmaths $image1 -bin $savedir/$conimage1-binarized-conformed.nii
-fslmaths $image2 -bin $savedir/$conimage2-binarized-conformed.nii
+#echo -e "\n Binarizing Images ... "
+#fslmaths $image1 -bin $savedir/$conimage1-binarized-conformed.nii
+#fslmaths $image2 -bin $savedir/$conimage2-binarized-conformed.nii
 
-image1=$savedir/$conimage1-binarized-conformed.nii.gz
-image2=$savedir/$conimage2-binarized-conformed.nii.gz
+#image1=$savedir/$conimage1-binarized-conformed.nii.gz
+#image2=$savedir/$conimage2-binarized-conformed.nii.gz
 
 # ------------------------------------------------------------------------------------------------------------
 if [ $p ]; then
