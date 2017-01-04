@@ -236,11 +236,22 @@ cat <<EOF
 
 EOF
 # ------------------------------------------------------------------------------------------------------------
-### Generate labels for file naming 
+### Generate labels for image 1 file naming 
+filename=$(basename "$image1")
+extension="${filename##*.}"
 conimage1=$(echo ${image1##*/}) 					
 conimage1=$(echo ${conimage1%*.*})
+if [ $extension='gz' ]; then
+	conimage1=$(echo ${conimage1%*.*})
+fi
+### Generate labels for image 2 file naming 
+filename=$(basename "$image2")
+extension="${filename##*.}"
 conimage2=$(echo ${image2##*/})
 conimage2=$(echo ${conimage2%*.*})
+if [ $extension='gz' ]; then
+	conimage2=$(echo ${conimage2%*.*})
+fi
 
 i1n=$(dirname $(echo "$image1" | head -1))
 i2n=$(dirname $(echo "$image2" | head -1))
