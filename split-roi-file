@@ -1,0 +1,123 @@
+#!/bin/bash
+
+# Default Arguments
+image=foo.nii
+savedir=$(pwd)
+
+show_help() {
+cat <<EOF
+
+	Usage :: ${0##*/} [-i--image FILE] [-s|--savedir PATH] [-h|--help]
+
+	Split a NIFTI file containing many Regions of Interests (ROIs) into seperate image files.
+	
+	Options	::
+
+		-i --image 		[FILE]  full path to ROI file
+		-s --savedir 		[PATH]  directory path to save output within
+
+		-h --help 		displays help
+
+	Details ::
+
+	This program will find the maximum integer in FILE and will iteratively extract all voxels
+	that contain values from 1 to max(FILE) storing each integer map as a seperate file.
+
+	Example ::
+
+		${0##*/} -i $image -s $savedir
+
+		Given a file $image with 3 ROIs, where ROI 1 is labeled with 1s in the image, ROI 2 is 
+		labeled with 2s in the image and ROI 3 is labeled with 3s in the image, this program 
+		will output three seperate files:  
+
+			foo.001.nii.gz 
+			foo.002.nii.gz 
+			foo.003.nii.gz
+
+		Each of these output files will only contain ROI 1, 2 or 3.
+
+EOF
+}
+
+
+# Option Parsing
+while :; do
+    case $1 in
+        -h|--help)
+        	show_help
+        	exit 
+        ;;
+        -i|--image)
+            if [ -n "$2" ]; then
+                image=$2
+                shift
+            else
+                echo "ERROR:  -i --image requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+        ;;
+        -s|--savedir)
+            if [ -n "$2" ]; then
+                savedir=$2
+                shift
+            else
+                echo "ERROR:  -s --savedir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+        ;;                                                                                     
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+        ;;
+        *)
+            break
+    esac
+
+    shift
+done
+
+
+# Get filename and extension
+filename=$(basename "$image")
+extension="${filename##*.}"
+
+# Parse Image File Name for Output
+## Check if file is compressed
+if [ $extension='gz' ]; then
+	imagename=$(echo ${image%%.nii.gz})
+fi
+## Otherwise check if any other image format
+if [ $extension='nii' ] || [ $extension='.img' ] || [ $extension='.hdr' ]; then
+	imagename=$(echo ${image%%.nii})
+else
+	echo -e "WARNING :: UNSUPPORTED FILE TYPE \n\n\tPlease provide .nii/.nii.gz/.img/.hdr \n\n(exiting)"
+	exit
+fi
+
+# Create Temporary Directory for Computation
+if [ ! -d $savedir/tmp ]; then
+	mkdir -p $savedir/tmp
+fi
+
+# Copy original image file for calculations
+fslmaths $image $savedir/tmp/$imagename.nii.gz
+
+# Get Maximum Range (trim trailing zeros)
+numrois=$(fslstats $image -R | awk '{print $2}' | awk -F . '{print $1}')
+
+counter=0
+while [[ $counter != $numrois ]]; do
+	# Decrement ROI number to extract
+	extractroi=$((numrois - $counter))
+	# Threshold Image for Extracted ROI
+	fslmaths $savedir/tmp/$image -thr $extractroi $savedir/$imagename.`printf %03d $extractroi`.nii.gz
+	# Subtract Extracted from Parent Image
+	fslmaths $savedir/tmp/$image -sub $savedir/$imagename.`printf %03d $extractroi`.nii.gz $savedir/tmp/$image
+	# Binirize Extracted ROI
+	fslmaths $savedir/$imagename.`printf %03d $extractroi`.nii.gz -bin $savedir/$imagename.`printf %03d $extractroi`.nii.gz	
+	# Increment Counter
+	counter=$((counter + 1))
+done
+
+rm -r $savedir/tmp
+

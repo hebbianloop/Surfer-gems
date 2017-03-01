@@ -153,7 +153,8 @@ for xx in $x; do
 			#mricalc_xcorr -x $xx -y $yy -m $k -s $s -p
 		fi
 		if [ $m == "dice" ]; then
-			data+=$(mricalc_xcorr -x $xx -y $yy -m $k -s $s -d | grep "dice =" | cut -f2 -d "=")
+			#data+=$(mricalc_xcorr -x $xx -y $yy -m $k -s $s -d | grep "dice =" | cut -f2 -d "=")
+            mricalc_xcorr -x $xx -y $yy -m $k -s $s -d
 		fi		
 		if [ $m == "jaccard" ]; then
 			data+=$(mricalc_xcorr -x $xx -y $yy -m $k -s $s -j | grep "jaccard =" | cut -f2 -d "=")
