@@ -113,8 +113,8 @@ while [[ $counter != $numrois ]]; do
 	fslmaths $savedir/tmp/$image -thr $extractroi $savedir/$imagename.`printf %03d $extractroi`.nii.gz
 	# Subtract Extracted from Parent Image
 	fslmaths $savedir/tmp/$image -sub $savedir/$imagename.`printf %03d $extractroi`.nii.gz $savedir/tmp/$image
-	# Binirize Extracted ROI
-	fslmaths $savedir/$imagename.`printf %03d $extractroi`.nii.gz -bin $savedir/$imagename.`printf %03d $extractroi`.nii.gz	
+	# Binarize Extracted ROI
+	fslmaths $savedir/$imagename.`printf %03d $extractroi`.nii.gz -bin -nan $savedir/$imagename.`printf %03d $extractroi`.nii.gz	
 	# Increment Counter
 	counter=$((counter + 1))
 done
