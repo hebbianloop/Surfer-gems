@@ -93,7 +93,7 @@ while :; do
 	-v|--vol)
 	    vol="show"
 	    ;;
-	-s|--surf)
+	-surf|--surf)
 	    surf="show"
 	    ;;
 	-T1)
@@ -111,7 +111,7 @@ while :; do
 	-wms|--whitemattersurf)
 	    wms="show"
 	    ;;
-	-sub|--subjid)
+	-s|--subjid)
 	    if [ -n "$2" ]; then
 			subjid=$2
 			shift
