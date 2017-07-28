@@ -16,18 +16,21 @@ d=$(date)
 subjid='bert'
 
 optionstring=''
-g=''
 imgformat=".mgz"
 
 # default freeview loadings
-vol="show"
-bm="show"
-t1="show"
-wmv="show"
+vol=""
+bm=""
+t1=""
+wmv=""
+aseg=""
 
-surf="show"
-pial="show"
-wms="show"
+surf=""
+pial=""
+wms=""
+inf=""
+
+editors=''
 # ------------------------------------------------------------------------------------------
 # Help
 show_help() {
@@ -92,9 +95,16 @@ while :; do
 	    ;;
 	-v|--vol)
 	    vol="show"
+	    t1='show'
+	    bm='show'
+	    wm='show'
+	    aseg='show'
 	    ;;
 	-surf|--surf)
 	    surf="show"
+		pial="show"
+		wms="show"
+		inf="show"	    
 	    ;;
 	-T1)
 	    t1="show"
@@ -105,12 +115,21 @@ while :; do
 	-wmv|--whitemattervol)
 	    wm="show"
 	    ;;
+	-aseg|--aseg)
+	    aseg="show"
+	    ;;	    
 	-p|--pial)
 	    pial="show"
 	    ;;
 	-wms|--whitemattersurf)
 	    wms="show"
 	    ;;
+	-inf|--inflated)
+	    inf="show"
+	    ;;
+	-e|--edit)
+	    editors='edit'
+	    ;;	    	    
 	-s|--subjid)
 	    if [ -n "$2" ]; then
 			subjid=$2
@@ -126,15 +145,6 @@ while :; do
 			shift
 	    else
 			echo "ERROR: -sd --subjectsdir requires a non empty option argument.\n" >&2
-			exit
-	    fi
-	    ;;
-	-g|--group)
-	    if [ -n "$2" ]; then
-			g=$2
-			shift
-	    else
-			echo "ERROR: -g --group requires a non empty option argument.\n" >&2
 			exit
 	    fi
 	    ;;
@@ -159,42 +169,41 @@ done
 # ------------------------------------------------------------------------------------------
 # Begin Script
 # ---------------------
-# Check if subject group is set
-if [ ! -z $g ]; then
-    subjid=$subjid-$g
-fi
 # Check if SUBJECTS DIRECTORY exists
-if [ ! -d $SUBJECTS_DIR ]; then
+if [ ! -d "${SUBJECTS_DIR}" ]; then
     echo "ERROR! Subjects Directory not found:  $SUBJECTS_DIR"
     exit
 fi
+# Check if loading subject for editing
+if [ "${editors}" ]; then
+	optionstring=${optionstring}"-c "
+	[ ! -d "${SUBJECTS_DIR}/${subjid}/tmp" ] && mkdir -v "${SUBJECTS_DIR}/${subjid}/tmp"
+	[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
+	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
+	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
+	surf='show' && pial='show' && wms='show' && inf='show'
+fi
 # Check if volume flag is set
-if [ $vol ]; then
-    optionstring="-v "
+if [ "${vol}" ]; then
+    optionstring=${optionstring}"-v "
     # Check if t1 is indicated
-    if [ $t1 ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1$imgformat "
-    fi
+    [ "${t1}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1$imgformat "
     # Check if brainmask is indicated
-    if [ $bm ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask$imgformat "
-    fi
+    [ "${bm}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask$imgformat "
     # Check if whitematter is indicated
-    if [ $wmv ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
-    fi
+    [ "${wmv}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
+    # Check if aseg is indicated
+    [ "${aseg}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/aseg$imgformat:colormap=lut:opacity=0.4:visible=0 "
 fi
 # Check if surface flag is set
-if [ $surf ]; then
+if [ "${surf}" ]; then
     optionstring=$optionstring"-f "
     # Check if pial surface is set
-    if [ $pial ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/surf/rh.pial:edgecolor=red "
-    fi
+    [ "${pial}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/surf/rh.pial:edgecolor=red "
     # Check if white matter surface is set
-    if [ $wms ]; then
-	optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue"
-    fi
+    [ "${wms}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue "
+    # Check if white matter surface is set
+	[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
 fi
 # Run FreeView with set options
-freeview $optionstring &
+freeview ${optionstring} &
