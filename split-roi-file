@@ -15,6 +15,7 @@ cat <<EOF
 
 		-i --image 		[FILE]  full path to ROI file
 		-s --savedir 		[PATH]  directory path to save output within
+		-r --roi 		[NUMBER] specify the value of a specific ROI to extract
 
 		-h --help 		displays help
 
@@ -22,6 +23,8 @@ cat <<EOF
 
 	This program will find the maximum integer in FILE and will iteratively extract all voxels
 	that contain values from 1 to max(FILE) storing each integer map as a seperate file.
+
+	A specific number can be input to extract only a specific ROI in a file containing many ROIs.
 
 	Example ::
 
@@ -65,7 +68,16 @@ while :; do
                 echo "ERROR:  -s --savedir requires a non-empty option argument.\n" >&2
                 exit 
             fi
-        ;;                                                                                     
+        ;;
+        -r|--roi)
+            if [ -n "$2" ]; then
+                target=$2
+                shift
+            else
+                echo "ERROR:  -r --roi requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+        ;;                                                                                                  
         -?*)
             printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
         ;;
@@ -79,45 +91,73 @@ done
 
 # Get filename and extension
 filename=$(basename "$image")
-extension="${filename##*.}"
-
-# Parse Image File Name for Output
-## Check if file is compressed
-if [ $extension='gz' ]; then
-	imagename=$(echo ${image%%.nii.gz})
-fi
-## Otherwise check if any other image format
-if [ $extension='nii' ] || [ $extension='.img' ] || [ $extension='.hdr' ]; then
-	imagename=$(echo ${image%%.nii})
-else
-	echo -e "WARNING :: UNSUPPORTED FILE TYPE \n\n\tPlease provide .nii/.nii.gz/.img/.hdr \n\n(exiting)"
-	exit
-fi
+extension="${filename#*.}"
+baseimagename=$(echo ${filename} | sed 's/'.${extension}'//')
 
 # Create Temporary Directory for Computation
 if [ ! -d $savedir/tmp ]; then
 	mkdir -p $savedir/tmp
 fi
+# Keep the same extension as the input file
+if [ ${extension} = 'nii.gz' ]; then
+	export FSLOUTPUTTYPE=NIFTI_GZ
+fi
+if [ ${extension} = 'nii' ]; then
+	export FSLOUTPUTTYPE=NIFTI
+fi
+# Convert .MGZ into NIFTI.GZ
+if [ ${extension} = 'mgz' ]; then
+	echo 'Converting .MGZ to Compressed NIFTI:: Saving in --> ${savedir}/tmp/${baseimagename}.nii.gz'
+	mri_convert -it mgz -ot nii ${image} ${savedir}/tmp/${baseimagename}.nii.gz
+	# Redefine image as the converted version
+	[ -f "${savedir}/tmp/${baseimagename}.nii.gz" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
+	[ ! -f "${savedir}/tmp/${baseimagename}.nii.gz" ] && echo 'ERROR ::: Conversion of ROI file from .MGZ to .NII.GZ Failed ... exiting' && exit
+	# Redefine other parameters
+	filename=$(basename "$image")
+	extension="${filename#*.}"
+	baseimagename=$(echo ${filename} | sed 's/'.${extension}'//')
+	echo ----
+	echo $filename
+	echo $extension
+	echo $baseimagename
+	exit
+fi	
+
+## Otherwise check if any other image format
+#if [ $extension='nii' ] || [ $extension='.img' ] || [ $extension='.hdr' ]; then
+#	imagename=$(echo ${image%%.nii})
+#else
+#	echo -e "WARNING :: UNSUPPORTED FILE TYPE \n\n\tPlease provide .nii/.nii.gz/.img/.hdr \n\n(exiting)"
+#	exit
+#fi
 
 # Copy original image file for calculations
-fslmaths $image $savedir/tmp/$imagename.nii.gz
+[ ! -f ${savedir}/tmp/${baseimagename}.${extension} ] && fslmaths ${image} ${savedir}'/tmp/'${baseimagename}
+
+# Redefine image as the copied version
+[ -f "${savedir}/tmp/${baseimagename}.${extension}" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
+[ ! -f "${savedir}/tmp/${baseimagename}.${extension}" ] && echo 'ERROR ::: Copy of ROI file Failed.. Cannot find ${savedir}/tmp/${baseimagename}.${extension} ... exiting' && exit
 
 # Get Maximum Range (trim trailing zeros)
 numrois=$(fslstats $image -R | awk '{print $2}' | awk -F . '{print $1}')
 
 counter=0
+
+# TODO :: Add method for extracting specific target roi
 while [[ $counter != $numrois ]]; do
 	# Decrement ROI number to extract
 	extractroi=$((numrois - $counter))
 	# Threshold Image for Extracted ROI
-	fslmaths $savedir/tmp/$image -thr $extractroi $savedir/$imagename.`printf %03d $extractroi`.nii.gz
+	fslmaths ${image} -thr ${extractroi} ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`
 	# Subtract Extracted from Parent Image
-	fslmaths $savedir/tmp/$image -sub $savedir/$imagename.`printf %03d $extractroi`.nii.gz $savedir/tmp/$image
+	## this step removes the extracted ROI from the parent image so the threshold only returns 1 ROI (the max roi) at all times
+	fslmaths ${image} -sub ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`'.'${extension} ${image}
 	# Binarize Extracted ROI
-	fslmaths $savedir/$imagename.`printf %03d $extractroi`.nii.gz -bin -nan $savedir/$imagename.`printf %03d $extractroi`.nii.gz	
+	fslmaths ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`'.'${extension} -bin -nan ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`'.'${extension}
 	# Increment Counter
 	counter=$((counter + 1))
 done
 
-rm -r $savedir/tmp
+echo 'Cleaning Up Temporary Files'
+rm -vr ${savedir}'/tmp'
 
