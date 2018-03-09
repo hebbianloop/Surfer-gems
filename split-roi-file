@@ -91,6 +91,7 @@ done
 
 # Get filename and extension
 filename=$(basename "$image")
+# TODO :: this way of finding an extension is a shitty way...
 extension="${filename#*.}"
 baseimagename=$(echo ${filename} | sed 's/'.${extension}'//')
 
@@ -132,23 +133,23 @@ fi
 #fi
 
 # Copy original image file for calculations
-[ ! -f ${savedir}/tmp/${baseimagename}.${extension} ] && fslmaths ${image} ${savedir}'/tmp/'${baseimagename}
+[ ! -f ${savedir}/tmp/${baseimagename}.${extension} ] && fslmaths ${image} ${savedir}/tmp/${baseimagename}.${extension}
 
 # Redefine image as the copied version
-[ -f "${savedir}/tmp/${baseimagename}.${extension}" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
-[ ! -f "${savedir}/tmp/${baseimagename}.${extension}" ] && echo 'ERROR ::: Copy of ROI file Failed.. Cannot find ${savedir}/tmp/${baseimagename}.${extension} ... exiting' && exit
+#[ -f "${savedir}/tmp/${baseimagename}.${extension}" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
+image="${savedir}/tmp/${baseimagename}.${extension}"
+#[ ! -f "${savedir}/tmp/${baseimagename}.${extension}" ] && echo "ERROR ::: Copy of ROI file Failed.. Cannot find ${savedir}/tmp/${baseimagename}.${extension} ... exiting" && exit
 
 # Get Maximum Range (trim trailing zeros)
 numrois=$(fslstats $image -R | awk '{print $2}' | awk -F . '{print $1}')
 
 counter=0
-
 # TODO :: Add method for extracting specific target roi
 while [[ $counter != $numrois ]]; do
 	# Decrement ROI number to extract
 	extractroi=$((numrois - $counter))
 	# Threshold Image for Extracted ROI
-	fslmaths ${image} -thr ${extractroi} ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`
+	fslmaths ${image} -thr ${extractroi} ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`'.'${extension}
 	# Subtract Extracted from Parent Image
 	## this step removes the extracted ROI from the parent image so the threshold only returns 1 ROI (the max roi) at all times
 	fslmaths ${image} -sub ${savedir}'/'${baseimagename}'-'`printf %03d $extractroi`'.'${extension} ${image}

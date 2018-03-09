@@ -112,6 +112,9 @@ while :; do
 	-bm|--brainmask)
 	    bm="show"
 	    ;;
+	-bet|--showbets)
+		bet="show"
+		;;
 	-wmv|--whitemattervol)
 	    wm="show"
 	    ;;
@@ -181,7 +184,7 @@ if [ "${editors}" ]; then
 	[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
 	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
 	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
-	surf='show' && pial='show' && wms='show' && inf='show'
+	surf='show' && pial='show' && wms='show' && inf='show' && bet='show'
 fi
 # Check if volume flag is set
 if [ "${vol}" ]; then
@@ -190,6 +193,8 @@ if [ "${vol}" ]; then
     [ "${t1}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1$imgformat "
     # Check if brainmask is indicated
     [ "${bm}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask$imgformat "
+    # Check if Brain Extraction Results is indicated
+    [ "${bet}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask*-bet-[2345].nii* "
     # Check if whitematter is indicated
     [ "${wmv}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
     # Check if aseg is indicated
