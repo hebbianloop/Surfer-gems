@@ -1,0 +1,140 @@
+#!/usr/local/bin/bash
+
+SUBJECTS=''
+
+function check-recons_usage(){
+cat <<EOF
+❖ PARSE RECON-ALL LOGS FOR STATUS AND ANALYTIC STATISTICS
+
+ ■ USAGE:
+ 	${0##*/} [--help|?|--usage] [-sd|--subjects-dir PATH] [-s|--subjects LIST] [--status active|done|failed]
+
+ ■ INFO: <>
+
+ ■ EXAMPLE:
+ 	${0##*/} -sd ${SUBJECTS_DIR}
+ 	  ⤷ 
+
+ ■ DEFAULTS
+
+EOF
+}
+function check-recons_defaults(){
+	SUBJECTS=''
+	STATUS=()
+	TAB=$'\t' 
+	TABLE=("SubjectID${TAB}JobSTATUS${TAB}TotalRunTime${TAB}ReconStatus${TAB}EulerNo${TAB}TalCorr\n")
+	WHOSRUNNING=() && WHOSFAILING=() && WHOSWINNING=()	# array for STATUS strings
+}
+function check-recons_parseopts(){
+	# Parse Options
+	while :; do
+	    case ${1} in
+	    --status)
+		    if [ -n "$2" ]; then
+				STATUS+=("${2}")
+				shift
+		    else
+		    	STATUS=("active" "done" "failed")
+		    fi
+		    ;;
+		-h|--help|?|--usage)
+			check-recons_usage
+			exit
+			;;
+		-sd|--subjects-dir)
+		    if [ -n "$2" ]; then
+				SUBJECTS_DIR=${2}
+				shift
+		    else
+				echo "ERROR: -sd --subjects-dir requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;
+		-s|--subjects)
+		    if [ -n "$2" ]; then
+				SUBJECTS=${2}
+				shift
+		    else
+				echo "ERROR: -s --subjects requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;		 
+		?*)
+		    printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
+		    exit
+		    ;;
+		*)
+		    break
+	    esac
+	    shift
+	done	
+	[ -z "${STATUS}" ] && STATUS=("active" "done" "failed")
+}
+# Find all subjects in SUBJECTS_DIR with a log file
+function check-recons_getsubjects(){
+	[ -z "${SUBJECTS}" ] && echo -e '\n ⏳  Checking Reconstructions with Status: '${STATUS[@]} && SUBJECTS=$(find "${SUBJECTS_DIR}/" -type f -name 'recon-all.log' | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/| |g' | awk '{print $1}')
+	[ -z "${SUBJECTS}" ] && echo -e '\n ⚠️. No Reconstructions Found in '${SUBJECTS_DIR}
+}
+# Check current STATUS of recons
+function check-recons_status(){
+		## HERE BUILD AN ARRAY OF STATUSES, COMPLETIONS AND FAIL MESSAGES
+		## PROVIDE OPTION FOR CHECKING JUST FAILURE, RUNNING OR COMPLETED
+		# Check if subject is currently running
+		[ "$(echo ${STATUS[*]} | grep 'active')" ] && [ "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && WHOSRUNNING+=("$(echo "$(cat ${SUBJECT}/scripts/recon-all-STATUS.log | tail -n 1 | sed "s|#@#|  ${SUBJECT} ::${TAB}|g")\n")")
+		# If subject is not running, read the end of the recon-all log file and check if completed
+		#[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && 
+		[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ] && WHOSWINNING+=("$(echo "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed "s/without error at/without error${TAB}Completed/")${TAB}$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1)\n")")
+		# If subject is not running, read the end of the recon-all log file and check if crashed
+		[ "$(echo ${STATUS[*]} | grep 'failed')" ] &&  [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ ! -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && WHOSFAILING+=("$(echo "recon-all -s ${SUBJECT} exited with ERRORS at${TAB}$(tail -n 5 ${SUBJECT}/scripts/recon-all-STATUS.log | grep -B 3 "exited with ERRORS at" | head -n 1 | sed 's/#@#//g')\n")")
+}
+function check-recons_printstatus(){
+	[ "$(echo ${STATUS[*]} | grep 'active')" ] && echo -e "⚙️ ${#WHOSRUNNING[@]} Current Active Jobs: \n ${WHOSRUNNING[@]}\n "
+	[ "$(echo ${STATUS[*]} | grep 'done')" ] && echo -e "✅ ${#WHOSWINNING[@]} Completed Jobs: \n ${WHOSWINNING[@]}\n "
+	[ "$(echo ${STATUS[*]} | grep 'failed')" ] && echo -e "✖︎ ${#WHOSFAILING[@]} Failed Jobs: \n ${WHOSFAILING[@]}\n "	
+}
+function check-recons_buildtable(){
+	## CALCULATE TOTAL RUN TIME
+	## EXTRACT DEFECTS AND SIZE DISTRIBUTION
+	## EXTRACT OTHER STATS
+	local counter=0
+	for SUBJECT in ${SUBJECTS}; do
+		if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
+			local status='running'
+			local reconstatus="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $NF}'
+			local 
+			((counter++))
+		fi
+		if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+			local status='completed'
+			local reconstatus='finished without error'
+			local tstarted="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $NF}'
+			local tfinished="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $(NF-1)}'
+			echo "${SUBJECT}${TAB}$t{started}${TAB}${tfinished}"
+			((counter++))
+		fi	
+		if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
+			local status='failed'
+			local reconstatus="${WHOSFAILING[${counter}]}" | awk -F ${TAB}'{print $NF}'
+			((counter++))
+		fi				
+		TABLE+=$(echo ${SUBJECT}${TAB}${status}${TAB}${runtime}${TAB}${reconstatus}${TAB}${lCNR}${TAB}${rCNR}${TAB}${CNR}${TAB}${ENUM}${TAB}${TALCORR})
+	done
+}
+function check-recons(){
+	# define default parameters
+	check-recons_defaults
+	# parse user input
+	check-recons_parseopts "$@"
+	# get list of subjects with log files
+	check-recons_getsubjects
+	# loop over subjects with log files
+	for SUBJECT in ${SUBJECTS}; do
+		[ ! -z "${STATUS}" ] && check-recons_status
+	done
+	## PERFORM DIFF BETWEEN DIRS AND SUBJECTS WITH LOG FILES??
+	#check-recons_printstatus
+	check-recons_buildtable
+}
+
+check-recons "$@"
