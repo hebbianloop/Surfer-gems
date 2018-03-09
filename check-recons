@@ -84,7 +84,7 @@ function check-recons_status(){
 		[ "$(echo ${STATUS[*]} | grep 'active')" ] && [ "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && WHOSRUNNING+=("$(echo "$(cat ${SUBJECT}/scripts/recon-all-STATUS.log | tail -n 1 | sed "s|#@#|  ${SUBJECT} ::${TAB}|g")\n")")
 		# If subject is not running, read the end of the recon-all log file and check if completed
 		#[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && 
-		[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ] && WHOSWINNING+=("$(echo "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed "s/without error at/without error${TAB}Completed/")${TAB}$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1)\n")")
+		[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ] && WHOSWINNING+=("$(echo "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed "s/without error at/without error^Completed/")^$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1)\n")")
 		# If subject is not running, read the end of the recon-all log file and check if crashed
 		[ "$(echo ${STATUS[*]} | grep 'failed')" ] &&  [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ ! -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && WHOSFAILING+=("$(echo "recon-all -s ${SUBJECT} exited with ERRORS at${TAB}$(tail -n 5 ${SUBJECT}/scripts/recon-all-STATUS.log | grep -B 3 "exited with ERRORS at" | head -n 1 | sed 's/#@#//g')\n")")
 }
@@ -101,25 +101,31 @@ function check-recons_buildtable(){
 	for SUBJECT in ${SUBJECTS}; do
 		if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
 			local status='running'
-			local reconstatus="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $NF}'
-			local 
+			local reconstatus="${WHOSRUNNING[${counter}]}" | awk -F ${TAB} '{print $NF}'
+			local tstart=''
+			local tnow=''
+			local trun=''
 			((counter++))
 		fi
-		if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+		if [ "$(echo ${STATUS[*]} | grep 'done')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ]; then
 			local status='completed'
 			local reconstatus='finished without error'
-			local tstarted="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $NF}'
-			local tfinished="${WHOSRUNNING[${counter}]}" | awk -F ${TAB}'{print $(NF-1)}'
-			echo "${SUBJECT}${TAB}$t{started}${TAB}${tfinished}"
+			local tstart=$(echo -e ${WHOSWINNING[$counter]} | sed "s_\\^_${TAB}_g" | awk -F '\t' '{print $NF}' | sed 's|Started at ||g')
+			local tdone=$(echo -e ${WHOSWINNING[$counter]} | sed "s_\\^_${TAB}_g" | awk -F '\t' '{print $2}' | sed 's|Completed ||g')
+			local tstart=$(date -d "${tstart}" '+%s')
+			local tdone=$(date -d "${tdone}" '+%s')
+			local trun=$((tdone-tstart))
+			runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
+			TABLE+=$(echo "${SUBJECT}${TAB}${status}${TAB}${runtime}${TAB}${reconstatus}\n")
 			((counter++))
 		fi	
 		if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
 			local status='failed'
-			local reconstatus="${WHOSFAILING[${counter}]}" | awk -F ${TAB}'{print $NF}'
+			local reconstatus="${WHOSFAILING[${counter}]}" | awk -F ${TAB} '{print $NF}'
 			((counter++))
 		fi				
-		TABLE+=$(echo ${SUBJECT}${TAB}${status}${TAB}${runtime}${TAB}${reconstatus}${TAB}${lCNR}${TAB}${rCNR}${TAB}${CNR}${TAB}${ENUM}${TAB}${TALCORR})
 	done
+	echo -e "${TABLE[@]}"
 }
 function check-recons(){
 	# define default parameters
