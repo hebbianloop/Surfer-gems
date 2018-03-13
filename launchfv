@@ -184,7 +184,7 @@ if [ "${editors}" ]; then
 	[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
 	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
 	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
-	surf='show' && pial='show' && wms='show' && inf='show' && bet='show'
+	surf='show' && pial='show' && wms='show' && inf='show' && bet=''
 fi
 # Check if volume flag is set
 if [ "${vol}" ]; then
