@@ -34,56 +34,60 @@ editors=''
 # ------------------------------------------------------------------------------------------
 # Help
 show_help() {
-cat <<EOF
+USAGE="$(cat<<-EOF
+Usage: ${0##*/} [-h|--help] [-sub|--subjid STRING] [-sd|--subjectsdir STRING] [-v|--vol] [-surf]\n
+				\t\t[-T1] [-bm|--brainmask] [-wmv|--whitemattervol] [-p|--pial] [-wms|--whitemattersurf]\n 
+				\t\t[-imgf|--imgformat STRING]\n\n
+				Launch FreeView for a given subject in a set SUBJECTS_DIR. User may set options to view 
+				specific volumes or surfaces.\n\n
+				
+				Options ::\n\n
+				\t-s --subjid\t\tsubject name\n
+				\t-sd  --subjectsdir\tsubjects directory (use this to change from default)\n\n				
 
-Usage: ${0##*/} [-h|--help] [-v|--vol] [-s|--surf] [-T1] [-bm|--brainmask]
-							[-wmv|--whitemattervol] [-p|--pial] [-wms|--whitemattersurf]
-							[-sub|--subjid STRING] [-sd|--subjectsdir STRING]
-							[-g|--group STRING] [-imgf|--imgformat STRING]
+				 Loading Volumes	::\n
+				\t-v --vol FILE\t\tLoads volumes (must indicate which volume with FILE)\n
+				\t-T1\t\t\tLoads intensity normalized T1\n
+				\t-bm --brainmask\t\tLoads skull stripped brain mask\n
+				\t-wmv --whitemattervol\tLoads white matter probabalistic volume\n\n
 
-Launch FreeView for a given subject in a set SUBJECTS_DIR. User may set options to view 
-specific volumes or surfaces.
+				 Loading Surfaces  ::\n
+				\t-surf\t\t\tLoads surfaces (must indicate which surfs)\n
+				\t-p --pial\t\tLoads pial surface\n
+				\t-wms --whitemattersurf\tLoads white matter surface\n\n
 
-Options :: 
+				\t-imgf --imgformat\tFormat of volume images (.nii/.nii.gz/.mgz)\n
+				\t-h --help\t\tDisplays help\n\n
 
-	-h --help 		Displays help
-	-v --vol 		Loads volumes (must indicate which volume)
-	-s --surf 		Loads surfaces (must indicate which surfs)
-	-T1 			Loads intensity normalized T1
-	-bm --brainmask 	Loads skull stripped brain mask
-	-wmv --whitemattervol	Loads white matter probabalistic volume
-	-p --pial 		Loads pial surface
-	-wms --whitemattersurf 	Loads white matter surface
-	-sub --subjid 		subject name
-	-sd  --subjectsdir 	subjects directory (use this to change from default)
-	-g 	 --group 	group identifier for subjects with multiple scans (i.e. longitudinal)
-	-imgf --imgformat 	Format of volume images (.nii/.nii.gz/.mgz)
-			
-Example ::
+				Example ::\n\n
 
-	Load a subject's volumes
+				\tLoad a subjects volumes\n\n
 
-		${0##*/} -sub 001 -v -T1 -bm -wmv
+					\t\t${0##*/} -s 001 -T1 -bm -wmv\n\n
 
-	Load a subject's surfaces
+				\tLoad a subject"s pial and white surfaces\n\n
 
-		${0##*/} -sub 001 -s -p -wms		
+					\t\t${0##*/} -s 001 -p -wms\n\n	
 
-	Load a subject's volumes and surfaces
+				\tLoad a subject"s volumes and surfaces\n\n
 
-		${0##*/} -sub 001 -v -s -T1 -bm -wmv -p -wms
+					\t\t${0##*/} -s 001 -T1 -bm -wmv -p -wms\n\n
 
+				\tLoad a subject for editing in Freeview\n\n
+				\t\t${0##*/} -s 001 -e
 
-Default Behavior ::
+				Default Behavior ::\n\n
 
-		Will show the brainmaks, pial and white surfaces by default for bert.
+				\tWill show the brainmaks, pial and white surfaces by default for bert.\n\n
 
-IMPORTANT !!
+				IMPORTANT !!\n\n
 
-	* Program assumes volume image format of .mgz by default (use -imgf option to set format)
+				\t* Program assumes volume image format of .mgz by default (use -imgf option to set format)\n\n
+				
+EOF)"
 
+echo -e $USAGE
 
-EOF
 }
 # ------------------------------------------------------------------------------------------
 # Parse Options
@@ -107,28 +111,28 @@ while :; do
 		inf="show"	    
 	    ;;
 	-T1)
-	    t1="show"
+	    vol="show" && t1="show"
 	    ;;
 	-bm|--brainmask)
-	    bm="show"
+	    vol="show" && bm="show"
 	    ;;
 	-bet|--showbets)
-		bet="show"
+		vol="show" && bet="show"
 		;;
 	-wmv|--whitemattervol)
-	    wm="show"
+	    vol="show" && wm="show"
 	    ;;
 	-aseg|--aseg)
-	    aseg="show"
+	    vol="show" && aseg="show"
 	    ;;	    
 	-p|--pial)
-	    pial="show"
+	    surf="show" && pial="show"
 	    ;;
 	-wms|--whitemattersurf)
-	    wms="show"
+	    surf="show" && wms="show"
 	    ;;
 	-inf|--inflated)
-	    inf="show"
+	    surf="show" && inf="show"
 	    ;;
 	-e|--edit)
 	    editors='edit'
@@ -184,7 +188,7 @@ if [ "${editors}" ]; then
 	[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
 	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
 	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
-	surf='show' && pial='show' && wms='show' && inf='show' && bet=''
+	surf='show' && pial='show' && wms='show' && inf='show'
 fi
 # Check if volume flag is set
 if [ "${vol}" ]; then
