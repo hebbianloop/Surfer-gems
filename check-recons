@@ -1,13 +1,20 @@
 #!/usr/local/bin/bash
+#
+## Check Status of Recons in SUBJECTS_DIR and Print Some Summary Stats
+SECONDS=0
 
-SUBJECTS=''
+## TODO read file created from job submission script to know when recon started (to calculate elapsed time)
+## TODO add HTML of SURFACES, VOLUMES, EDITS pMAP
+## TODO MAKE FASTER
+## TODO Average DEFECT size
 
+# Usage info
 function check-recons_usage(){
 cat <<EOF
 ❖ PARSE RECON-ALL LOGS FOR STATUS AND ANALYTIC STATISTICS
 
  ■ USAGE:
- 	${0##*/} [--help|?|--usage] [-sd|--subjects-dir PATH] [-s|--subjects LIST] [--status active|done|failed]
+ 	${0##*/} [--help|?|--usage] [-sd|--subjects-dir PATH] [-s|--subjects LIST] [--status active|done|failed] [--table]
 
  ■ INFO: <>
 
@@ -19,12 +26,25 @@ cat <<EOF
 
 EOF
 }
+# Preallocate arrays and default values
 function check-recons_defaults(){
-	SUBJECTS=''
-	STATUS=()
+	STATUS=() && RECONSTATS=() # array of desired status outputs
+	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
+	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
+	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
+	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
+	status=()
+	hname=()
+	talqa=()
+	bcnr=()
+	acnr=()
+	ndef=()
+	leno=()
+	reno=()
+	bmedits=()
+	runtime=()	
 	TAB=$'\t' 
-	TABLE=("SubjectID${TAB}JobSTATUS${TAB}TotalRunTime${TAB}ReconStatus${TAB}EulerNo${TAB}TalCorr\n")
-	WHOSRUNNING=() && WHOSFAILING=() && WHOSWINNING=()	# array for STATUS strings
+	TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
 }
 function check-recons_parseopts(){
 	# Parse Options
@@ -37,6 +57,12 @@ function check-recons_parseopts(){
 		    else
 		    	STATUS=("active" "done" "failed")
 		    fi
+		    ;;
+	    --detail)
+			RECONSTATS='getdetails'
+		    ;;		
+	    --kill-jobs)
+			KILLJOBS='stopActiveSGEJobs'
 		    ;;
 		-h|--help|?|--usage)
 			check-recons_usage
@@ -59,7 +85,7 @@ function check-recons_parseopts(){
 				echo "ERROR: -s --subjects requires a non empty option argument.\n" >&2
 				exit
 		    fi
-		    ;;		 
+		    ;;
 		?*)
 		    printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
 		    exit
@@ -69,78 +95,216 @@ function check-recons_parseopts(){
 	    esac
 	    shift
 	done	
-	[ -z "${STATUS}" ] && STATUS=("active" "done" "failed")
+	# check reconstruction statistics for all active/finished/failed jobs if status isn't specified
+	[ "${RECONSTATS}" ] && [ -z "${STATUS}" ] && STATUS=("active" "done" "failed")
 }
-# Find all subjects in SUBJECTS_DIR with a log file
-function check-recons_getsubjects(){
-	[ -z "${SUBJECTS}" ] && echo -e '\n ⏳  Checking Reconstructions with Status: '${STATUS[@]} && SUBJECTS=$(find "${SUBJECTS_DIR}/" -type f -name 'recon-all.log' | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/| |g' | awk '{print $1}')
-	[ -z "${SUBJECTS}" ] && echo -e '\n ⚠️. No Reconstructions Found in '${SUBJECTS_DIR}
-}
-# Check current STATUS of recons
+# Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
 function check-recons_status(){
-		## HERE BUILD AN ARRAY OF STATUSES, COMPLETIONS AND FAIL MESSAGES
-		## PROVIDE OPTION FOR CHECKING JUST FAILURE, RUNNING OR COMPLETED
-		# Check if subject is currently running
-		[ "$(echo ${STATUS[*]} | grep 'active')" ] && [ "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && WHOSRUNNING+=("$(echo "$(cat ${SUBJECT}/scripts/recon-all-STATUS.log | tail -n 1 | sed "s|#@#|  ${SUBJECT} ::${TAB}|g")\n")")
-		# If subject is not running, read the end of the recon-all log file and check if completed
-		#[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && 
-		[ "$(echo ${STATUS[*]} | grep 'done')" ] && [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ] && WHOSWINNING+=("$(echo "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed "s/without error at/without error^Completed/")^$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1)\n")")
-		# If subject is not running, read the end of the recon-all log file and check if crashed
-		[ "$(echo ${STATUS[*]} | grep 'failed')" ] &&  [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/ -name 'IsRunning*')" ] && [ ! -z "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "exited with ERRORS at")" ] && WHOSFAILING+=("$(echo "recon-all -s ${SUBJECT} exited with ERRORS at${TAB}$(tail -n 5 ${SUBJECT}/scripts/recon-all-STATUS.log | grep -B 3 "exited with ERRORS at" | head -n 1 | sed 's/#@#//g')\n")")
+	echo -e '\n\n⏳  Parsing Reconstructions with Status: '${STATUS[@]}'\n'
+	# Find all subjects with IsRunning file, get current status, time and host
+	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
+	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
+		RUNNINGSUBJECTS=($(find ${SUBJECTS_DIR}/ -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
+		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
+			printf "🏃‍  ...found ${#RUNNINGSUBJECTS[*]} active jobs\r"
+			RUNNINGSTATUS+=("$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+			RUNNINGTIME+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
+			RUNNINGHOSTS+=("$(grep "HOST" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | awk '{print $NF}' | sed 's/.local//')")
+		done
+	fi
+	# Find all subjects with recon-all.log file and list those with finished message at end of log
+	if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+		RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null)"
+		echo -e '\n\r'
+		for RECON in ${RECONS}; do
+			printf "🏁  ...found ${#FINISHEDSUBJECTS[*]} completed jobs\r" ${FINISHEDSUBJECTS[*]}
+			if [ "$(tail -n 5 ${RECON} | grep -B 0 "finished without error")" ]; then
+				FINISHEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | awk '{print $3}')")
+				# FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)")
+				FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
+				FINISHEDHOSTS+=("$(grep "hostname" ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+				STARTTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')")
+			fi
+		done
+	fi
+	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
+		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
+		[ ! "${RECONS}" ] && RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null)"
+		echo -e '\r'
+		for RECON in ${RECONS}; do
+			SUBJECT=$(echo ${RECON} | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g' | sed 's|/||g')
+			printf "🚧  ...found ${#FAILEDSUBJECTS[*]} failed jobs\r"
+			if [ "$(tail -n 10 ${RECON} | grep -B 0 "exited with ERRORS at")" ]; then
+				FAILEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | awk '{print $3}')")
+				FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+				FAILTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
+				FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+			fi
+			# Collect any other subjects that don't show running files, a fail message at end of log OR
+			if [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts -name 'IsRunning*' 2> /dev/null)" ] && [ ! "$(tail -n 5 ${RECON} | grep -B 0 "finished without error")" ] && [ ! "$(tail -n 10 ${RECON} | grep -B 0 "exited with ERRORS at")" ]; then
+				FAILEDSUBJECTS+=("$(echo ${SUBJECT})")
+				FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+				FAILTIMES+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
+				FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+			fi
+		done
+	fi
+	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
+		echo -e "⚠️  No Data found for subjects with status: ${STATUS[*]}"
+		echo -e '\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n'
+	fi
 }
 function check-recons_printstatus(){
-	[ "$(echo ${STATUS[*]} | grep 'active')" ] && echo -e "⚙️ ${#WHOSRUNNING[@]} Current Active Jobs: \n ${WHOSRUNNING[@]}\n "
-	[ "$(echo ${STATUS[*]} | grep 'done')" ] && echo -e "✅ ${#WHOSWINNING[@]} Completed Jobs: \n ${WHOSWINNING[@]}\n "
-	[ "$(echo ${STATUS[*]} | grep 'failed')" ] && echo -e "✖︎ ${#WHOSFAILING[@]} Failed Jobs: \n ${WHOSFAILING[@]}\n "	
-}
-function check-recons_buildtable(){
-	## CALCULATE TOTAL RUN TIME
-	## EXTRACT DEFECTS AND SIZE DISTRIBUTION
-	## EXTRACT OTHER STATS
-	local counter=0
-	for SUBJECT in ${SUBJECTS}; do
-		if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
-			local status='running'
-			local reconstatus="${WHOSRUNNING[${counter}]}" | awk -F ${TAB} '{print $NF}'
-			local tstart=''
-			local tnow=''
-			local trun=''
+	# print status of active jobs
+	## TODO modify job submission script to write file to SUBJECTS_DIR/SUBJECT/script with time recon started in SGE
+	if [ "${RUNNINGSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
+			tstart=${RUNNINGTIME[$counter]} && tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s')
+			trun=$((tnow-tstart)) && runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
+			status+=$(echo "\n${RUNNINGHOSTS[$counter]}\t${SUBJECT}\t${RUNNINGSTATUS[$counter]}\t${runtime}")
 			((counter++))
-		fi
-		if [ "$(echo ${STATUS[*]} | grep 'done')" ] && [ "$(tail -n 5 ${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error")" ]; then
-			local status='completed'
-			local reconstatus='finished without error'
-			local tstart=$(echo -e ${WHOSWINNING[$counter]} | sed "s_\\^_${TAB}_g" | awk -F '\t' '{print $NF}' | sed 's|Started at ||g')
-			local tdone=$(echo -e ${WHOSWINNING[$counter]} | sed "s_\\^_${TAB}_g" | awk -F '\t' '{print $2}' | sed 's|Completed ||g')
-			local tstart=$(date -d "${tstart}" '+%s')
-			local tdone=$(date -d "${tdone}" '+%s')
-			local trun=$((tdone-tstart))
+		done
+		status=$(echo -e ${status} | sort -k1 -r)
+		header=$(echo -e "\nHOST\tSUBJECTID\tSTATUS\tTIME-ELAPSED\n")
+		echo -e "${header}\n${status}" |  column -s $'\t' -t && echo -e "\n\n⚙️  ${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: \n"  && [ $(which qhost) ] && qhost | sed '3d;' && echo -e '\n See more information by typing qstat -f -ne\n'
+	fi
+	# print status of finished jobs
+	if [ "${FINISHEDSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
+			tstart=${STARTTIMES[$counter]} && tdone=${FINISHTIMES[$counter]}
+			tdonep=$(date -d "${tdone}" '+%s') && tstart=$(date -d "${tstart}" '+%s') && trun=$((tdonep-tstart))
 			runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			TABLE+=$(echo "${SUBJECT}${TAB}${status}${TAB}${runtime}${TAB}${reconstatus}\n")
+			status+=$(echo "\n${FINISHEDHOSTS[$counter]}\t${SUBJECT}\t${tdone}\t${runtime}")
 			((counter++))
-		fi	
-		if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
-			local status='failed'
-			local reconstatus="${WHOSFAILING[${counter}]}" | awk -F ${TAB} '{print $NF}'
+		done
+		status=$(echo -e ${status} | sort -k1 -r)
+		header=$(echo -e "\nHOST\tSUBJECTID\tCOMPLETION-TIME\tTIME-ELAPSED\n")
+		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e "\n✅ ${#FINISHEDSUBJECTS[@]} Completed Jobs: \n\n"
+	fi
+	# print status of failed subjects
+	if [ "${FAILEDSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${FAILEDSUBJECTS[@]}; do
+			status+=$(echo "\n${FAILEDHOSTS[$counter]}\t${SUBJECT}\t${FAILPOINT[$counter]}\t${FAILTIMES[$counter]}")
 			((counter++))
-		fi				
+		done
+		status=$(echo -e ${status} | sort -k1 -r)
+		header=$(echo -e "\nHOST\tSUBJECTID\tRECON-STEP\tTIME-FAILED\n")
+		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e "\n\n‼️  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
+	fi
+}
+# Stop all current recon jobs using either SGE (if available) or KILL command
+function check-recons_killJobs(){
+	echo -e '\n 🗑  Interrupting and Deleting ALL active Jobs for User: '$(whoami)'\n'
+	[ $(which qdel) ] && echo -e '\n\t Deleting SGE jobs...' && qdel -u $(whoami)
+	[ ! $(which qdel) ] && echo -e '\n\t Killing all local processes matching "recon-all -s" pattern ' && kill $(echo $(ps aux | grep 'recon-all -s '| tail -n +2 | awk '{print $2}'))
+	echo -e '\n\t Cleaning up IsRunning files...\n'
+	parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/ -type f -name 'IsRunning*' 2> /dev/null)
+	[ -z "${STATUS}" ] && exit
+}
+# Check all files are present for subject
+function check-recons_files(){
+echo 'filler'
+}
+## TODO make individual functions for each of the stats and make them option accessible 
+##		must update TABLE header based on this
+function check-recons_stats(){
+	[ -z "${STATUS[*]}" ] && check-recons_status
+	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")	&& status=()
+	counter=0
+	for SUBJECT in ${SUBJECTS[@]}; do
+		printf "\r%s💤  %d/%d -- Analyzing Reconstruction Stats" "$(tput el)" $counter ${#SUBJECTS[*]}
+		if [ "$(echo ${RUNNINGSUBJECTS[*]} | grep -oE ${SUBJECT})" ]; then
+			status+=('running')
+			hname+=("$(grep "HOST" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | sed 's/HOST //g' | sed 's/.local//g')")
+			# tstart="$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g"  | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)"
+			tstart="$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g"  | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)"
+			if [ "$(echo ${tstart} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ]; then
+				tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s') && trun=$((tnow-tstart))	
+				runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
+			else
+				runtime+=("$(echo nan)")
+			fi
+		fi
+		if [ "$(echo ${FINISHEDSUBJECTS[*]} | grep -oE ${SUBJECT})" ]; then
+			status+=('done')
+			hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+			tstart="$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')"
+			# tdone="$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed 's|\\n| |g' | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)"
+ 			tdone="$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)"
+			if [ "$(echo ${tstart} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ] && [ "$(echo ${tdone} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ]; then
+				tstart=$(date -d "${tstart}" '+%s') && tdone=$(date -d "${tdone}" '+%s') && trun=$((tdone-tstart))
+				runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
+			else
+				runtime+=("$(echo nan)")
+			fi
+		fi
+		if [ $(echo ${FAILEDSUBJECTS[*]} | grep -oE ${SUBJECT}) ]; then
+			status+=('failed')
+			hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+			## TODO - is there anyway to figure out how long recon was running before failure? there is no start time anywhere?
+			# echo "$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)"
+			runtime+=("$(echo nan)")
+		fi
+		# Count up the number of brainmask edits
+		printf "\r%s✏️  📊  %d/%d -- Compiling Edits\r" "$(tput el)" $counter ${#SUBJECTS[*]}
+		recon-all -s ${SUBJECT} -show-edits > ${SUBJECTS_DIR}'/'${SUBJECT}'/manual-edits-report.txt'
+		# get last reported recon status
+		reconstatus+=("$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')")
+		# get talairach quality assurance
+		talqa+=("$(grep  "TalAviQA" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}')")
+		# 
+		ndef+=("$(grep "defects" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $1}')") || [ -z "${ndef[$counter]}" ]
+		leno+=("$(grep -Eo "lheno =[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}')")
+		reno+=("$(grep -Eo "rheno =[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}')")
+		# Calculate CNR
+		printf "\r%s✏️  📊  %d/%d -- Calculating CNR\r" "$(tput el)" ${counter} ${#SUBJECTS[*]}
+		bcnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/orig/001.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
+		acnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/T1.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
+		bmedits+=($(grep -Eo "[0-9]{1,20} edits in brainmask.mgz" ${SUBJECTS_DIR}/${SUBJECT}'/manual-edits-report.txt' | awk '{print $1}'))
+		[ ! "${hname[$counter]}" ] && hname[$counter]=nan
+		[ ! "${runtime[$counter]}" ] && runtime[$counter]=nan
+		[ ! "${status[$counter]}" ] && status[$counter]=nan
+		[ ! "${reconstatus[$counter]}" ] && reconstatus[$counter]=nan
+		[ ! "${bcnr[$counter]}" ] && bcnr[$counter]=nan
+		[ ! "${acnr[$counter]}" ] && acnr[$counter]=nan
+		[ ! "${ndef[$counter]}" ] && ndef[$counter]=nan
+		[ ! "${leno[$counter]}" ] && leno[$counter]=nan
+		[ ! "${reno[$counter]}" ] && reno[$counter]=nan
+		[ ! "${bmedits[$counter]}" ] && bmedits[$counter]=nan
+		# echo -e '\n\r'
+		# echo -e "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"		
+		# exit
+		((counter++))
 	done
-	echo -e "${TABLE[@]}"
+}
+function check-recons_table(){
+	local counter=0
+	echo -e '\r\n'
+	for SUBJECT in ${SUBJECTS[@]}; do
+		printf "📝  $counter/${#SUBJECTS[*]} -- Building Table\r"
+		TABLE+=($(echo "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"))
+		((counter++))
+	done
+	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
+	cat ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt | column -s $'\t' -t
 }
 function check-recons(){
 	# define default parameters
 	check-recons_defaults
 	# parse user input
 	check-recons_parseopts "$@"
-	# get list of subjects with log files
-	check-recons_getsubjects
-	# loop over subjects with log files
-	for SUBJECT in ${SUBJECTS}; do
-		[ ! -z "${STATUS}" ] && check-recons_status
-	done
+	[ ! -z "${KILLJOBS}" ] && check-recons_killJobs
+	# check status of active/failed/done
+	[ ! -z "${STATUS[*]}" ] && check-recons_status && check-recons_printstatus
+	# get details of reconstruction statistics
+	[ ! -z "${RECONSTATS}" ] && check-recons_stats && check-recons_table
+	# [ ! -z "${RECONSTATS[*]}" ] && check-recons_buildtable
 	## PERFORM DIFF BETWEEN DIRS AND SUBJECTS WITH LOG FILES??
-	#check-recons_printstatus
-	check-recons_buildtable
 }
 
 check-recons "$@"
+echo ""
+echo "check-recon completed the task in ${SECONDS} seconds"
