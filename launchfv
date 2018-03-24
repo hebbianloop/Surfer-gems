@@ -134,6 +134,9 @@ while :; do
 	-inf|--inflated)
 	    surf="show" && inf="show"
 	    ;;
+	-o|--orig)
+	    surf="show" && orig="show"
+	    ;;	    
 	-e|--edit)
 	    editors='edit'
 	    ;;	    	    
@@ -203,6 +206,8 @@ if [ "${vol}" ]; then
     [ "${wmv}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
     # Check if aseg is indicated
     [ "${aseg}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/aseg$imgformat:colormap=lut:opacity=0.4:visible=0 "
+    # Check if original is indicated
+    [ "${orig}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/orig$imgformat "
 fi
 # Check if surface flag is set
 if [ "${surf}" ]; then
