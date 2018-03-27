@@ -186,7 +186,8 @@ if [ ! -d "${SUBJECTS_DIR}" ]; then
 fi
 # Check if loading subject for editing
 if [ "${editors}" ]; then
-	optionstring=${optionstring}"-c "
+#	optionstring=${optionstring}"-c "
+        optionstring=${optionstring}
 	[ ! -d "${SUBJECTS_DIR}/${subjid}/tmp" ] && mkdir -v "${SUBJECTS_DIR}/${subjid}/tmp"
 	#[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
 #	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
