@@ -188,8 +188,9 @@ fi
 if [ "${editors}" ]; then
 	optionstring=${optionstring}"-c "
 	[ ! -d "${SUBJECTS_DIR}/${subjid}/tmp" ] && mkdir -v "${SUBJECTS_DIR}/${subjid}/tmp"
-	[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
-	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
+	#[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
+#	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
+	optionstring=${optionstring}
 	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
 	surf='show' && pial='show' && wms='show' && inf='show'
 fi
@@ -220,4 +221,4 @@ if [ "${surf}" ]; then
 	[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
 fi
 # Run FreeView with set options
-freeview ${optionstring} &
+freeview ${optionstring}
