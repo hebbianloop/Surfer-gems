@@ -222,4 +222,4 @@ if [ "${surf}" ]; then
 	[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
 fi
 # Run FreeView with set options
-freeview ${optionstring}
+freeview ${optionstring} &
