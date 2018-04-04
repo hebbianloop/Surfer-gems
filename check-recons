@@ -291,6 +291,35 @@ function check-recons_table(){
 	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
 	cat ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt | column -s $'\t' -t
 }
+function check-recons_whereami(){
+	SOURCE="${BASH_SOURCE[0]}"
+	while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+		DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+		SOURCE="$(readlink "$SOURCE")"
+		[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+	done
+	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"	
+}
+function check-recons_html(){
+	[ -z ${SUBJECTS} ] && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
+	[ -z ${REPORTDIR} ] && REPORTDIR=${HOME}/FreeSurfer.Report 
+	[ ! -d ${REPORTDIR} ] && mkdir -pv ${HOME}/FreeSurfer.Report && cp -rv ${DIR}/html/* ${HOME}/FreeSurfer.Report/
+	# http://www.compciv.org/topics/web/heredocs_and_html/
+	# http://www.compciv.org/topics/bash/text-values/#heredocs-info
+	# https://stackoverflow.com/questions/1167746/how-to-assign-a-heredoc-value-to-a-variable-in-bash
+	# https://www.mathworks.com/matlabcentral/fileexchange/40942-plot-mesh-as-interactive-html?s_tid=gn_loc_drop
+	TITLE='FreeSurfer Reconstruction Report'
+	PAGETITLE='FreeSurfer Reconstruction Report'
+	# Build index programatically from beginning to end
+	# Include a separate lightbox for each subject
+	# Take screenshots of each subject brainmask // white matter // pial surface overlays
+	#	- include GIFS of rotating surface?
+	for SUBJECT in ${SUBJECTS[@]}; do
+		echo ''
+	done
+	# Later...
+	# Include graphics for summary report of data from subject
+}
 function check-recons(){
 	# define default parameters
 	check-recons_defaults
