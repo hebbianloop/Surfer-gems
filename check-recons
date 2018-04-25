@@ -26,26 +26,6 @@ cat <<EOF
 
 EOF
 }
-# Preallocate arrays and default values
-function check-recons_defaults(){
-	STATUS=() && RECONSTATS=() # array of desired status outputs
-	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
-	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
-	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
-	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
-	status=()
-	hname=()
-	talqa=()
-	bcnr=()
-	acnr=()
-	ndef=()
-	leno=()
-	reno=()
-	bmedits=()
-	runtime=()	
-	TAB=$'\t' 
-	TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
-}
 function check-recons_parseopts(){
 	# Parse Options
 	while :; do
@@ -58,6 +38,9 @@ function check-recons_parseopts(){
 		    	STATUS=("active" "done" "failed")
 		    fi
 		    ;;
+		--web-report)
+			HTMLREPORT='makereport'
+			;;
 	    --detail)
 			RECONSTATS='getdetails'
 		    ;;		
@@ -98,9 +81,34 @@ function check-recons_parseopts(){
 	# check reconstruction statistics for all active/finished/failed jobs if status isn't specified
 	[ "${RECONSTATS}" ] && [ -z "${STATUS}" ] && STATUS=("active" "done" "failed")
 }
+# Preallocate arrays and default values
+function check-recons_defaults(){
+	# declare vars for HTML
+	REPORTREPO_TEMPLATE="https://seldamat.github.io/Surfer-webgems.git"
+	REPORTREPO=''
+	REPORTDIR="${HOME}/Surfer-webgems"
+	# declare vars for status check & printing
+	STATUS=() && RECONSTATS=() # array of desired status outputs
+	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
+	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
+	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
+	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
+	status=()
+	hname=()
+	talqa=()
+	bcnr=()
+	acnr=()
+	ndef=()
+	leno=()
+	reno=()
+	bmedits=()
+	runtime=()	
+	TAB=$'\t' 
+	TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
+}
 # Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
 function check-recons_status(){
-	echo -e '\n\n⏳  Parsing Reconstructions with Status: '${STATUS[@]}'\n'
+	echo -e '\n\n🔦  Finding Reconstructions with Status: '${STATUS[@]}' in '${SUBJECTS_DIR}'\n'
 	# Find all subjects with IsRunning file, get current status, time and host
 	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
@@ -122,7 +130,7 @@ function check-recons_status(){
 				FINISHEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | awk '{print $3}')")
 				# FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)")
 				FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
-				FINISHEDHOSTS+=("$(grep "hostname" ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+				FINISHEDHOSTS+=("$(grep "hostname" ${RECON} | tail -n 1 | awk '{print $NF}' | sed 's/.local//')")
 				STARTTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')")
 			fi
 		done
@@ -150,8 +158,15 @@ function check-recons_status(){
 		done
 	fi
 	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
-		echo -e "⚠️  No Data found for subjects with status: ${STATUS[*]}"
-		echo -e '\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n'
+		if [ "${STATUS[*]}" = 'failed' ]; then
+			echo -e "🙌  No Failed Jobs! All Participants Report Successful Completion\n\t..give yourself a pat on the back (hint: 🍩)"
+		fi
+		if [ "${STATUS[*]}" = 'done' ]; then
+			echo -e "∅  No Completed Jobs Found.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
+		fi
+		if [ "${STATUS[*]}" = 'active' ]; then
+			echo -e "∅  No Active Jobs Detected.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
+		fi		
 	fi
 }
 function check-recons_printstatus(){
@@ -194,7 +209,7 @@ function check-recons_printstatus(){
 		done
 		status=$(echo -e ${status} | sort -k1 -r)
 		header=$(echo -e "\nHOST\tSUBJECTID\tRECON-STEP\tTIME-FAILED\n")
-		echo -e "‼️  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
+		echo -e "🔥  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
 	fi
 }
@@ -303,36 +318,320 @@ function check-recons_whereami(){
 	done
 	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"	
 }
+function check-recons_html.sync(){
+	[ -d ${REPORTDIR} ] && check-recons_whereami && cd ${REPORTDIR} && git pull && cd ${DIR}
+}
+function check-recons_html.publish(){
+	if [ -d ${REPORTDIR} ]; then
+		check-recons_whereami && cd ${REPORTDIR}
+		if git commit -am "web update $(hostname)"; then
+			if git push; then
+				cd ${DIR}	
+			fi
+		fi
+	fi
+}
+function check-recons_html.init(){
+	# Clone Report Tools If You Don't Have Them
+	if [ ! -d ${REPORTDIR} ]; then
+		git clone ${REPORTREPO_TEMPLATE} ${REPORTDIR}
+	fi
+	# Initialize INDEX
+	PAGETITLE='Surfer-gems Web Reports'
+	PROJECTNAME='FreeSurfer Project'
+	HEADERNAME='FreeSurfer Project: Web Reports'
+	DESCRIPTION='🤵🏻 Automated web reports of 3D structural MR images reconstructed with the <a href="http://freesurfer.net"> FreeSurfer software package</a>. Generated with <a href="https://github.com/seldamat/Surfer-gems">Surfer-gems</a> and <a href="https://html5up.net">html5up</a>'	
+	check-recons_html.init.index
+	# Initialize Landing Pages
+	## - TODO clean this up.. make it more customizable 
+	## - TODO configure with default but allow user modification
+	## group
+	PAGETITLE='FreeSurfer Project: FreeSurfer Average Subject Report'
+	PROJECTNAME='FreeSurfer Project'
+	HEADERNAME='FreeSurfer Project: Group Reports'
+	DESCRIPTION='Select from different group summaries'	
+	TILES="atlas thickness curvature surface-area volumes edits contrast-to-noise"
+	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
+	TILEPAGES=("group.atlas.html" "group.thickness.html" "group.curvature.html" "group.surface-area.html" "group.tpm.html" "group.edits.html" "group.contrast-to-noise.html")	
+	HTMLFILE=${REPORTDIR}/group.landing.html	
+	check-recons_html.init.landing ${HTMLFILE} # maybe add STDIN?
+	## individuals
+	PAGETITLE='FreeSurfer Project: Individual Participant Reports'
+	PROJECTNAME='FreeSurfer Project'
+	HEADERNAME='FreeSurfer Project: Participant Reports'
+	DESCRIPTION='Select from different participant summary reports'			
+	TILES="atlas thickness curvature surface-area tpms edits contrast-to-noise"	
+	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
+	TILEPAGES=("group.atlas.html" "group.thickness.html" "group.curvature.html" "group.surface-area.html" "group.tpm.html" "group.edits.html" "group.contrast-to-noise.html")	
+	HTMLFILE=${REPORTDIR}/indiv.landing.html	
+	check-recons_html.init.landing ${HTMLFILE}
+}
 function check-recons_html(){
-	[ -z ${SUBJECTS} ] && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	[ -z ${REPORTDIR} ] && REPORTDIR=${HOME}/FreeSurfer.Report 
-	[ ! -d ${REPORTDIR} ] && mkdir -pv ${HOME}/FreeSurfer.Report && cp -rv ${DIR}/html/* ${HOME}/FreeSurfer.Report/
+	check-recons_html.init
+	if [ ${REFRESH} ]; then
+		check-recons_status
+	fi
+	# resources & references 
 	# http://www.compciv.org/topics/web/heredocs_and_html/
 	# http://www.compciv.org/topics/bash/text-values/#heredocs-info
 	# https://stackoverflow.com/questions/1167746/how-to-assign-a-heredoc-value-to-a-variable-in-bash
 	# https://www.mathworks.com/matlabcentral/fileexchange/40942-plot-mesh-as-interactive-html?s_tid=gn_loc_drop
-	TITLE='FreeSurfer Reconstruction Report'
-	PAGETITLE='FreeSurfer Reconstruction Report'
 	# Build index programatically from beginning to end
 	# Include a separate lightbox for each subject
 	# Take screenshots of each subject brainmask // white matter // pial surface overlays
 	#	- include GIFS of rotating surface?
-	for SUBJECT in ${SUBJECTS[@]}; do
-		echo ''
-	done
+	#for SUBJECT in ${SUBJECTS[@]}; do
+	#	echo ''
+	#done
 	# Later...
 	# Include graphics for summary report of data from subject
+}
+function check-recons_html.init.landing(){
+	OUTFILE=${1}
+	read -r -d '' LANDING <<EOF
+<!DOCTYPE HTML>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>${PAGETITLE}</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<!--[if lte IE 9]><link rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
+		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+	</head>
+	<body>
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header" class="alt">
+						<a href="index.html" class="logo"><strong>${PROJECTNAME}</strong></a>
+						<nav>
+							<a href="#menu">Menu</a>
+						</nav>
+					</header>
+
+				<!-- Menu -->
+					<nav id="menu">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li><a href="groupreports.landing.html">Group Reports</a></li>
+							<li><a href="indivreports.landing.html">Individual Reports</a></li>
+							<li><a href="references.html">References</a></li>
+						</ul>
+					</nav>
+
+				<!-- Banner -->
+					<section id="banner" class="major">
+						<div class="inner">
+							<header class="major">
+								<h1>${HEADERNAME}</h1>
+							</header>
+							<div class="content">
+								<p>${DESCRIPTION}</p>
+								<ul class="actions">
+									<li><a href="#one" class="button next scrolly">Explore Data</a></li>
+								</ul>
+							</div>
+						</div>
+					</section>
+				<!-- Main -->
+					<div id="main">
+
+						<!-- One -->
+							<section id="one" class="tiles">					
+EOF
+echo "landing head written"
+printf "${LANDING}" > ${OUTFILE}
+##
+counter=0
+for TILE in ${TILES}; do
+	TILEPIC=${TILEPICS[$counter]}
+	TILEPAGE=${TILEPAGES[$counter]}
+read -r -d '' LANDINGTILE <<EOF
+								<article>
+									<span class="image">
+										<img src="images/${TILE}/${TILEPIC}.jpg" alt="" />
+									</span>
+									<header class="major">
+										<h3><a href="${TILEPAGE}.html" class="link">${TILE}</a></h3>
+									</header>
+								</article>
+EOF
+# append to file
+echo "landing tiles written"
+printf "${LANDINGTILE}" >> ${OUTFILE}
+((counter++))
+done
+##
+read -r -d '' LANDINGEND <<EOF
+
+					</div>
+				<!-- Footer -->
+					<footer id="footer">
+						<div class="inner">
+							<ul class="icons">
+								<li><a href="https://github.com/seldamat/Surfer-webgems.git" class="icon alt fa-github"><span class="label">GitHub</span> Fork me on GitHub! </a></li>
+							</ul>
+							<ul class="copyright">
+								<li>&copy; <a href="https://seldamat.github.io"> Shady El Damaty</a></li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/skel.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
+EOF
+echo "landing end written"
+printf "${LANDINGEND}" >> ${OUTFILE}
+}
+## 
+function check-recons_html.init.index(){
+	read -r -d '' INDEX <<EOF
+<!DOCTYPE HTML>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>${PAGETITLE}</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body>
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+				<!-- Note: The "styleN" class below should match that of the banner element. -->
+					<header id="header" class="alt style2">
+						<a href="index.html" class="logo"><strong>${PROJECTNAME}</strong></a>
+						<nav>
+							<a href="#menu">Menu</a>
+						</nav>
+					</header>
+
+				<!-- Menu -->
+					<nav id="menu">
+						<ul class="links">
+							<li><a href="index.html">Home</a></li>
+							<li><a href="group.landing.html">Template Average Summary</a></li>
+							<li><a href="indiv.landing.html">Individual Participant Reports</a></li>
+							<li><a href="references.html">References</a></li>
+						</ul>
+					</nav>
+
+				<!-- Banner -->
+				<!-- Note: The "styleN" class below should match that of the header element. -->
+					<section id="banner" class="style2">
+						<div class="inner">
+							<span class="image">
+								<img src="images/pic07.jpg" alt="" />
+							</span>
+							<header class="major">
+								<h1>${HEADERNAME}</h1>
+							</header>
+							<div class="content">
+								<p>${DESCRIPTION}</p>
+							</div>
+						</div>
+					</section>
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Two -->
+							<section id="two" class="spotlights">
+								<section>
+									<div class="content">
+										<div class="inner">
+											<header class="major">
+												<h3>Study Average Reports</h3>
+											</header>
+											<p>Summaries and visualizations averaged across participants.</p>
+											<ul class="actions">
+												<li><a href="group.landing.html" class="button special">View Data</a></li>
+											</ul>
+										</div>
+									</div>
+								</section>
+								<section>
+									<div class="content">
+										<div class="inner">
+											<header class="major">
+												<h3>Individual Participant Reports</h3>
+											</header>
+											<p>See volumes and surfaces by participant.</p>
+											<ul class="actions">
+												<li><a href="indiv.landing.html" class="button special">View Data</a></li>
+											</ul>
+										</div>
+									</div>
+								</section>
+							</section>
+						</div>
+				<!-- Footer -->
+					<footer id="footer">
+						<div class="inner">
+							<ul class="icons">
+								<li><a href="https://github.com/seldamat/Surfer-webgems.git" class="icon alt fa-github"><span class="label">GitHub</span> Fork me on GitHub! </a></li>
+							</ul>
+							<ul class="copyright">
+								<li>&copy; <a href="https://seldamat.github.io"> Shady El Damaty</a></li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li>
+							</ul>
+						</div>
+					</footer>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/skel.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>	
+EOF
+	printf "${INDEX}" > ${REPORTDIR}/index.html && open index.html
 }
 function check-recons(){
 	# define default parameters
 	check-recons_defaults
 	# parse user input
 	check-recons_parseopts "$@"
-	[ ! -z "${KILLJOBS}" ] && check-recons_killJobs
+	[ "${KILLJOBS}" ] && check-recons_killJobs
 	# check status of active/failed/done
-	[ ! -z "${STATUS[*]}" ] && check-recons_status && check-recons_printstatus
+	[ "${STATUS[*]}" ] && check-recons_status && check-recons_printstatus
 	# get details of reconstruction statistics
-	[ ! -z "${RECONSTATS}" ] && check-recons_stats && check-recons_table
+	[ "${RECONSTATS}" ] && check-recons_stats && check-recons_table
+	# make HTML webreport 
+	[ "${HTMLREPORT}" ] && check-recons_html
 	# [ ! -z "${RECONSTATS[*]}" ] && check-recons_buildtable
 	## PERFORM DIFF BETWEEN DIRS AND SUBJECTS WITH LOG FILES??
 }
