@@ -50,6 +50,7 @@ function check-recons_defaults(){
 	#
 	RED='\033[0;31m' && BRED='\033[1;31m' && YELLOW='\033[1;33m' && GREEN='\033[1;32m' && BLUE='\033[1;34m' && GREY='\033[1;37m' NC='\033[0m' # Colors
 	BBLUE='\033[1;40m' && NBC='\033[49m' GGREY='\033[1;30m' && YBC='\033[47m'
+	LRED='\033[1;31m'
 	# arrays 
 	RECONSTATS=() 												# array of desired status outputs
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
@@ -75,17 +76,17 @@ function check-recons_files(){
 	echo -e "\nCross-checking Dataset with FreeSurfer File Manifest:\n"
 	[ ! ${SUBJECTS} ] && check-recons_status
 	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && NUMFILES=$(echo ${MANIFEST} | wc -l)
-	MISSING=() && EXISTS=()
+	MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && NUMFILES=$(echo "${MANIFEST}" | wc -l)
+	MISSING=() && EXISTS=() && RERUNSUB=() && COMPLETESUB=()
 	# build list of files
 	## TODO - 
 	# iterate and check subjects
 	for SUBJECT in ${SUBJECTS[@]}; do
-		[ "$(echo ${RUNNINGSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏃‍♂️  ${BRED}${SUBJECT}${GREY}( running)")
-		[ "$(echo ${FAILEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🚧  ${BRED}${SUBJECT}${GREY} (failed)")
-		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BRED}${SUBJECT}${GREY} (done)")
+		[ "$(echo ${RUNNINGSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏃‍♂️  ${BLUE}${SUBJECT}${GREY} (running)")
+		[ "$(echo ${FAILEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🚧  ${BLUE}${SUBJECT}${YELLOW} (failed)")
+		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BLUE}${SUBJECT}${GREEN} (done)")
 		for FILE in ${MANIFEST}; do
-			if [ $(find ${SUBJECT} -name ${FILE} -type f) ]; then
+			if [ "$(find ${SUBJECTS_DIR}/${SUBJECT} -name ${FILE} -type f)" ]; then
 				#echo -e "${GREEN}✔ ${SUBJECT} :: ${MGZ} (ok)\n"
 				EXISTS+=("${SUBJECT} ${FILE}")
 			else
@@ -93,60 +94,64 @@ function check-recons_files(){
 				MISSING+=("${SUBJECT} ${FILE}")
 			fi
 		done
+		NUMSUBFILES=$(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed "s|${SUBJECT}||g" | wc -w)
 		# NUMFOUND=${#EXISTS} && NUMMISSING=${#MISSING}
 		# PERCENTFOUND=$(echo "scale=2; ${NUMFOUND} / ${NUMFILES} * 100" | bc)
 		# if (( $(echo "${PERCENTFOUND} < 100" | bc -l) )); then
-		if [ "${#EXISTS}" != "${NUMFILES}" ]; then
+		if [ "${NUMSUBFILES}" != "${NUMFILES}" ]; then
+			RERUNSUB+=("${SUBJECT}")
 			# report manifest
-			echo -e "${status}"
-			## missing volumes
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
-			## missing talairach
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
-			## missing nu
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) non-uniform intensity correction files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
-			## missing lh surfs
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))"
-			## missing rh surfs
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*')))"
-			## missing stats
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
-			## missing annot
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
-			## missing ctab
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
-			## missing labels
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
-			## missing text files
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
-			## missing logs
-			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
-			## present volumes
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
-			## present talairach
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
-			## present nu
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
-			## present lh surfs
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*')))"
-			## present rh surfs
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))"
-			## present stats
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
-			## present annot
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
-			## present ctab
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
-			## present labels
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
-			## present text files
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
-			## present log
-			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
-			echo -e ""
+			echo -e "${status} - ${NUMSUBFILES} / ${NUMFILES} manifest files found${NC}"
+			if [ ${VERBOSE} ]; then
+				## missing volumes
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
+				## missing talairach
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
+				## missing nu
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) non-uniform intensity correction files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
+				## missing lh surfs
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))"
+				## missing rh surfs
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))"
+				## missing stats
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
+				## missing annot
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
+				## missing ctab
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
+				## missing labels
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
+				## missing text files
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
+				## missing logs
+				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
+				## present volumes
+				[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
+				## present talairach
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
+				## present nu
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
+				## present lh surfs
+				[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))"
+				## present rh surfs
+				[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))"
+				## present stats
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
+				## present annot
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
+				## present ctab
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
+				## present labels
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
+				## present text files
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
+				## present log
+				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
+				echo -e ""
+			fi
 		else
-			echo -e "${GREY}${SUBJECT}  ${GREEN}✔ all files (ok)${NC}"
-			echo -e ""
+			echo -e "${status}  ${GREEN}✔ all files (ok)${NC}"
+			COMPLETESUB+=("${SUBJECT}")
 		fi
 		#check-subject ${SUBJECT}
 	done
@@ -155,7 +160,7 @@ function check-recons_files(){
 ##  Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
 function check-recons_status(){
 	##
-	echo -e "\nFinding Reconstructions with Status: ${STATUS[@]} \n\n   🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
+	echo -e "\nFinding FreeSurfer Jobs with Status: ${STATUS[@]} \n\n   🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
 	# Find all subjects with IsRunning file, get current status, time and host
 	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
@@ -326,13 +331,13 @@ function check-recons_printstatus_verbose(){
 	if [ "${FINISHEDSUBJECTS[*]}" ]; then
 		echo 'Completed Job Status Details ::'		
 			for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
-				echo -e "\n${BLUE}${SUBJECT}\n${GREEN}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
+				echo -e "\n${BLUE}${SUBJECT}\n${GREEN}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log')| head -n 5 )${NC}\n"
 			done		
 	fi
 	if [ "${FAILEDSUBJECTS[*]}" ]; then
 		echo 'Failed Job Status Details ::'		
 			for SUBJECT in ${FAILEDSUBJECTS[@]}; do
-				echo -e "\n${BLUE}${SUBJECT}\n${BRED}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
+				echo -e "\n${BLUE}${SUBJECT}\n${BRED}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 8 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
 			done		
 	fi		
 }
@@ -344,41 +349,47 @@ function check-recons_printstatus(){
 		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
 			tstart=${RUNNINGTIME[$counter]} && tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s')
 			trun=$((tnow-tstart)) && runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			status+=$(echo "\n${RUNNINGHOSTS[$counter]}\t${SUBJECT}\t${RUNNINGSTATUS[$counter]}\t${runtime}")
+			status+=$(echo "\n${GREY}${RUNNINGHOSTS[$counter]}\t${BLUE}${SUBJECT}\t${GREY}${RUNNINGSTATUS[$counter]}\t${GREY}${runtime}${NC}")
 			((counter++))
 		done
 		status=$(echo -e ${status} | sort -k1 -r)		
-		header=$(echo -e "\nHOST\tSUBJECTID\tSTATUS\tTIME-ELAPSED\n")
-		echo -e "🏃  ${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: \n"
+		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}STATUS\t${LRED}TIME-ELAPSED${NC}\n")
+		echo -e "🏃  ${GREY}${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: ${NC}\n"
+		[ $(which qstat) ] && printf  "    Remaining Subjects ::: %d\n\n" $(qstat -s p | grep 'qw' | wc -l)
 		echo -e "${header}\n${status}" |  column -s $'\t' -t  && echo -e '\n' &&  [ $(which qhost) ] && qhost | sed '3d;' && echo -e '\n See more information by typing qstat -f -ne\n'
 	fi
 	# print status of finished jobs
 	if [ "${FINISHEDSUBJECTS[*]}" ]; then
 		counter=0 && status=""
 		for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
+			[ "$(echo ${RERUNSUB[@]} | grep "${SUBJECT}")" ] && rerun="${LRED}missing files"
+			[ "$(echo ${COMPLETESUB[@]} | grep "${SUBJECT}")" ] && rerun="${GREEN}complete"
 			tstart=${STARTTIMES[$counter]} && tdone=${FINISHTIMES[$counter]}
 			tdonep=$(date -d "${tdone}" '+%s') && tstart=$(date -d "${tstart}" '+%s') && trun=$((tdonep-tstart))
 			runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			status+=$(echo "\n${FINISHEDHOSTS[$counter]}\t${SUBJECT}\t${tdone}\t${runtime}")
+			status+=$(echo "\n${GREY}${FINISHEDHOSTS[$counter]}\t${BLUE}${SUBJECT}\t${GREY}${tdone}\t${GREY}${runtime}\t${rerun}${NC}")
 			((counter++))
 		done
 		status=$(echo -e ${status} | sort -k1 -r)
-		header=$(echo -e "\nHOST\tSUBJECTID\tCOMPLETION-TIME\tTIME-ELAPSED\n")
-		echo -e "✅ ${#FINISHEDSUBJECTS[@]} Completed Jobs :: \n"
+		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}COMPLETION-TIME\t${GGREY}TIME-ELAPSED\tDATASET-MANIFEST\n")
+		echo -e "✅ ${GREEN}${#FINISHEDSUBJECTS[@]} Completed Jobs :: ${NC}\n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
 	fi
 	# print status of failed subjects
 	if [ "${FAILEDSUBJECTS[*]}" ]; then
 		counter=0 && status=""
 		for SUBJECT in ${FAILEDSUBJECTS[@]}; do
-			status+=$(echo "\n${FAILEDHOSTS[$counter]}\t${SUBJECT}\t${FAILPOINT[$counter]}\t${FAILTIMES[$counter]}")
+			status+=$(echo "\n${GREY}${FAILEDHOSTS[$counter]}\t${BRED}${SUBJECT}\t${YELLOW}${FAILPOINT[$counter]}\t${LRED}${FAILTIMES[$counter]}${NC}")
 			((counter++))
 		done
 		status=$(echo -e ${status} | sort -k1 -r)
-		header=$(echo -e "\nHOST\tSUBJECTID\tRECON-STEP\tTIME-FAILED\n")
-		echo -e "🔥  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
+		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}RECON-STEP\t${GGREY}TIME-FAILED\n")
+		echo -e "🔥 ${YELLOW}${#FAILEDSUBJECTS[@]} Failed Jobs${NC} :: \n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
 	fi
+	[ "$(echo "${RERUNSUB[@]}")" ] && echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC}" && printf "${FREESURFER_HOME}/recon-all -s %s -make all\n" ${RERUNSUB[@]}
+	[ "$(echo "${COMPLETESUB[@]}")" ] && echo -e "\n${GREEN}Complete file manifests (ready for analysis):${NC}" && printf "${BLUE}%s${NC} " ${COMPLETESUB[@]}
+	echo -e '\n\n'	
 }
 function check-recons_table(){
 	local counter=0
@@ -391,8 +402,21 @@ function check-recons_table(){
 	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
 	cat ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt | column -s $'\t' -t
 }
-function check-recons_mgztoNIFTI(){
-	echo ''
+function check-recons_convertintoNIFTI(){
+	echo -e 'Taking Inventory before Converting MGZs to NIFTI'
+	[ ! ${EXISTS} ] && check-recons_files
+	SURFs='lh.pial lh.white rh.pial rh.white'
+	MGZs='brainmask wm aparc+aseg edits'
+	for SUBJECT in ${SUBJECTS[@]}; do
+		for MGZ in ${MGZs}; do
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE "${MGZ}.mgz"))" ] && mri_convert --out_type nii ${SUBJECTS_DIR}/${SUBJECT}/mri/${MGZ}.mgz  ${SUBJECTS_DIR}/${SUBJECT}/mri/${MGZ}.nii.gz
+		done
+		for SURF in ${SURFs}; do
+			[ "$(echo $(printf '%s %s \n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE "${SURF}"))" ] && mris_convert ${SUBJECTS_DIR}/${SUBJECT}/surf/${SURF} ${SUBJECTS_DIR}/${SUBJECT}/surf/${SURF}.gii
+		done
+	done
+	# echo build-Papaya.sh -images "$(echo ${MGZs[@]} | sed "s|.mgz|.nii.gz|g")" -local
+	
 	## NEED LIST OF FILES TO CONVERT
 }
 ################################################################################################################
@@ -769,6 +793,10 @@ function check-recons_parseopts(){
 				shift
 		    fi
 		    ;;
+		--convert)
+			CONVERTFILES='convert'
+			## add specification here?
+			;;
 	    -f|--files)
 			FILECHECK='checkemall'
 		    ;;		    		    
@@ -826,7 +854,7 @@ function check-recons_parseopts(){
 	    shift
 	done	
 	# declare vars for status check & printing
-	[ ! "${STATUS}" ] && STATUS=("${GREY}active{NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+	[ ! "${STATUS}" ] && STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 
 }
 function-check-recons_dependencies(){
@@ -848,6 +876,8 @@ function check-recons(){
 	check-recons_defaults	
 	# get location of program
 	check-recons_whereami	
+	[ ${CONVERTFILES} ] && check-recons_convertintoNIFTI
+	exit
 	[ "${KILLJOBS}" ] && check-recons_killJobs
 	# check file manifest of each subject
 	[ "${FILECHECK}" ] && check-recons_files && check-recons_printstatus
