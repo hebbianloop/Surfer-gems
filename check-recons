@@ -8,7 +8,8 @@ SECONDS=0
 ## TODO MAKE FASTER
 ## TODO Average DEFECT size
 
-# Usage info
+### DEFINE FUNCTION
+##  Usage info
 function check-recons_usage(){
 cat <<EOF
 ❖ PARSE RECON-ALL LOGS FOR STATUS AND ANALYTIC STATISTICS
@@ -26,89 +27,135 @@ cat <<EOF
 
 EOF
 }
-function check-recons_parseopts(){
-	# Parse Options
-	while :; do
-	    case ${1} in
-	    --status)
-		    if [ -n "$2" ]; then
-				STATUS+=("${2}")
-				shift
-		    else
-		    	STATUS=("active" "done" "failed")
-		    fi
-		    ;;
-		--web-report)
-			HTMLREPORT='makereport'
-			;;
-	    --detail)
-			RECONSTATS='getdetails'
-		    ;;		
-	    --kill-jobs)
-			KILLJOBS='stopActiveSGEJobs'
-		    ;;
-		-h|--help|?|--usage)
-			check-recons_usage
-			exit
-			;;
-		-sd|--subjects-dir)
-		    if [ -n "$2" ]; then
-				SUBJECTS_DIR=${2}
-				shift
-		    else
-				echo "ERROR: -sd --subjects-dir requires a non empty option argument.\n" >&2
-				exit
-		    fi
-		    ;;
-		-s|--subjects)
-		    if [ -n "$2" ]; then
-				SUBJECTS=${2}
-				shift
-		    else
-				echo "ERROR: -s --subjects requires a non empty option argument.\n" >&2
-				exit
-		    fi
-		    ;;
-		?*)
-		    printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
-		    exit
-		    ;;
-		*)
-		    break
-	    esac
-	    shift
-	done	
-	# check reconstruction statistics for all active/finished/failed jobs if status isn't specified
-	[ "${RECONSTATS}" ] && [ -z "${STATUS}" ] && STATUS=("active" "done" "failed")
+### DEFINE FUNCTION
+##
+function check-recons_whereami(){
+	while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+		DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+		SOURCE="$(readlink "$SOURCE")"
+		[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+	done
+	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"	
+	# get where this script lives
+	SOURCEPATH="`dirname \"$0\"`"              # relative
+	SOURCEPATH="`( cd \"${SOURCEPATH}\" && pwd )`"	
 }
-# Preallocate arrays and default values
+### DEFINE FUNCTION
+##  Preallocate arrays and default values
 function check-recons_defaults(){
 	# declare vars for HTML
 	REPORTREPO_TEMPLATE="https://seldamat.github.io/Surfer-webgems.git"
 	REPORTREPO=''
 	REPORTDIR="${HOME}/Surfer-webgems"
-	# declare vars for status check & printing
-	STATUS=() && RECONSTATS=() # array of desired status outputs
+	#
+	RED='\033[0;31m' && BRED='\033[1;31m' && YELLOW='\033[1;33m' && GREEN='\033[1;32m' && BLUE='\033[1;34m' && GREY='\033[1;37m' NC='\033[0m' # Colors
+	BBLUE='\033[1;40m' && NBC='\033[49m' GGREY='\033[1;30m' && YBC='\033[47m'
+	# arrays 
+	RECONSTATS=() 												# array of desired status outputs
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
 	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
 	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
 	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
-	status=()
-	hname=()
-	talqa=()
-	bcnr=()
-	acnr=()
-	ndef=()
-	leno=()
-	reno=()
-	bmedits=()
-	runtime=()	
-	TAB=$'\t' 
-	TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
+	status=() && hname=() && talqa=() && bcnr=() && acnr=()
+	ndef=() && leno=() && reno=() && bmedits=() && runtime=()	
+	# table preallocation
+	TAB=$'\t' && TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
 }
-# Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######### DATASET & JOB MANAGEMENT
+#########
+#########
+################################################################################################################
+################################################################################################################
+### DEFINE FUNCTION
+##  Check all files are present for subject
+function check-recons_files(){
+	echo -e "\nCross-checking Dataset with FreeSurfer File Manifest:\n"
+	[ ! ${SUBJECTS} ] && check-recons_status
+	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
+	MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && NUMFILES=$(echo ${MANIFEST} | wc -l)
+	MISSING=() && EXISTS=()
+	# build list of files
+	## TODO - 
+	# iterate and check subjects
+	for SUBJECT in ${SUBJECTS[@]}; do
+		[ "$(echo ${RUNNINGSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏃‍♂️  ${BRED}${SUBJECT}${GREY}( running)")
+		[ "$(echo ${FAILEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🚧  ${BRED}${SUBJECT}${GREY} (failed)")
+		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BRED}${SUBJECT}${GREY} (done)")
+		for FILE in ${MANIFEST}; do
+			if [ $(find ${SUBJECT} -name ${FILE} -type f) ]; then
+				#echo -e "${GREEN}✔ ${SUBJECT} :: ${MGZ} (ok)\n"
+				EXISTS+=("${SUBJECT} ${FILE}")
+			else
+				#echo -e "${YELLOW}⨯ ${SUBJECT} :: ${MGZ} (missing)\n" >&2
+				MISSING+=("${SUBJECT} ${FILE}")
+			fi
+		done
+		# NUMFOUND=${#EXISTS} && NUMMISSING=${#MISSING}
+		# PERCENTFOUND=$(echo "scale=2; ${NUMFOUND} / ${NUMFILES} * 100" | bc)
+		# if (( $(echo "${PERCENTFOUND} < 100" | bc -l) )); then
+		if [ "${#EXISTS}" != "${NUMFILES}" ]; then
+			# report manifest
+			echo -e "${status}"
+			## missing volumes
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
+			## missing talairach
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
+			## missing nu
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) non-uniform intensity correction files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
+			## missing lh surfs
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))"
+			## missing rh surfs
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${RED}⨯ ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*')))"
+			## missing stats
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
+			## missing annot
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
+			## missing ctab
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
+			## missing labels
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${RED}x ${YELLOW} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
+			## missing text files
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
+			## missing logs
+			[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${RED}x ${BRED} $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
+			## present volumes
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
+			## present talairach
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'tal.*' | sed "s|${SUBJECT} ||g"))"
+			## present nu
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g") | wc -w) talairach files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE 'nu.*' | sed "s|${SUBJECT} ||g"))"
+			## present lh surfs
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*') | wc -w) lh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'lh.*')))"
+			## present rh surfs
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*') | wc -w) rh surfaces ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed 's|.*.label||g' | sed 's|.*.txt||g' | sed 's|.*.stats||g' | sed 's|.*.mgz||g' | sed 's|.*.dat||g' | sed 's|.*annot||g' | sed 's|.*mgh||g' | grep -oE 'rh.*'))"
+			## present stats
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.stats'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | wc -w) stats files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.stats' | sed "s|${SUBJECT}||g")))"
+			## present annot
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.annot'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | wc -w) annotations ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.annot' | sed "s|${SUBJECT}||g")))"
+			## present ctab
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.ctab'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | wc -w) color lookup tables ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.ctab' | sed "s|${SUBJECT}||g")))"
+			## present labels
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.label'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | wc -w) labels ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.label' | sed "s|${SUBJECT}||g")))"
+			## present text files
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
+			## present log
+			[ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
+			echo -e ""
+		else
+			echo -e "${GREY}${SUBJECT}  ${GREEN}✔ all files (ok)${NC}"
+			echo -e ""
+		fi
+		#check-subject ${SUBJECT}
+	done
+}
+### DEFINE FUNCTION
+##  Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
 function check-recons_status(){
-	echo -e '\n\n🔦  Finding Reconstructions with Status: '${STATUS[@]}' in '${SUBJECTS_DIR}'\n'
+	##
+	echo -e "\nFinding Reconstructions with Status: ${STATUS[@]} \n\n   🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
 	# Find all subjects with IsRunning file, get current status, time and host
 	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
@@ -123,7 +170,7 @@ function check-recons_status(){
 	# Find all subjects with recon-all.log file and list those with finished message at end of log
 	if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
 		RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null)"
-		echo -e '\n\r'
+		# echo -e '\n\r'
 		for RECON in ${RECONS}; do
 #			printf "🏁  ...found ${#FINISHEDSUBJECTS[*]} completed jobs\r" ${FINISHEDSUBJECTS[*]}
 			if [ "$(tail -n 5 ${RECON} | grep -B 0 "finished without error")" ]; then
@@ -138,7 +185,7 @@ function check-recons_status(){
 	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
 		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
 		[ ! "${RECONS}" ] && RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null)"
-		echo -e '\r'
+		# echo -e '\r'
 		for RECON in ${RECONS}; do
 			SUBJECT=$(echo ${RECON} | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g' | sed 's|/||g')
 #			printf "🚧  ...found ${#FAILEDSUBJECTS[*]} failed jobs\r"
@@ -158,62 +205,19 @@ function check-recons_status(){
 		done
 	fi
 	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
-		if [ "${STATUS[*]}" = 'failed' ]; then
+		if [  $(echo "${STATUS[*]}" | grep 'failed') ]; then
 			echo -e "🙌  No Failed Jobs! All Participants Report Successful Completion\n\t..give yourself a pat on the back (hint: 🍩)"
 		fi
-		if [ "${STATUS[*]}" = 'done' ]; then
+		if [ $(echo "${STATUS[*]}" | grep 'done') ]; then
 			echo -e "∅  No Completed Jobs Found.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
 		fi
-		if [ "${STATUS[*]}" = 'active' ]; then
+		if [ $(echo "${STATUS[*]}" | grep 'active') ]; then
 			echo -e "∅  No Active Jobs Detected.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
 		fi		
 	fi
 }
-function check-recons_printstatus(){
-	# print status of active jobs
-	## TODO modify job submission script to write file to SUBJECTS_DIR/SUBJECT/script with time recon started in SGE
-	if [ "${RUNNINGSUBJECTS[*]}" ]; then
-		counter=0 && status=""
-		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
-			tstart=${RUNNINGTIME[$counter]} && tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s')
-			trun=$((tnow-tstart)) && runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			status+=$(echo "\n${RUNNINGHOSTS[$counter]}\t${SUBJECT}\t${RUNNINGSTATUS[$counter]}\t${runtime}")
-			((counter++))
-		done
-		status=$(echo -e ${status} | sort -k1 -r)		
-		header=$(echo -e "\nHOST\tSUBJECTID\tSTATUS\tTIME-ELAPSED\n")
-		echo -e "🏃  ${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: \n"
-		echo -e "${header}\n${status}" |  column -s $'\t' -t  && echo -e '\n' &&  [ $(which qhost) ] && qhost | sed '3d;' && echo -e '\n See more information by typing qstat -f -ne\n'
-	fi
-	# print status of finished jobs
-	if [ "${FINISHEDSUBJECTS[*]}" ]; then
-		counter=0 && status=""
-		for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
-			tstart=${STARTTIMES[$counter]} && tdone=${FINISHTIMES[$counter]}
-			tdonep=$(date -d "${tdone}" '+%s') && tstart=$(date -d "${tstart}" '+%s') && trun=$((tdonep-tstart))
-			runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			status+=$(echo "\n${FINISHEDHOSTS[$counter]}\t${SUBJECT}\t${tdone}\t${runtime}")
-			((counter++))
-		done
-		status=$(echo -e ${status} | sort -k1 -r)
-		header=$(echo -e "\nHOST\tSUBJECTID\tCOMPLETION-TIME\tTIME-ELAPSED\n")
-		echo -e "✅ ${#FINISHEDSUBJECTS[@]} Completed Jobs :: \n"
-		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
-	fi
-	# print status of failed subjects
-	if [ "${FAILEDSUBJECTS[*]}" ]; then
-		counter=0 && status=""
-		for SUBJECT in ${FAILEDSUBJECTS[@]}; do
-			status+=$(echo "\n${FAILEDHOSTS[$counter]}\t${SUBJECT}\t${FAILPOINT[$counter]}\t${FAILTIMES[$counter]}")
-			((counter++))
-		done
-		status=$(echo -e ${status} | sort -k1 -r)
-		header=$(echo -e "\nHOST\tSUBJECTID\tRECON-STEP\tTIME-FAILED\n")
-		echo -e "🔥  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
-		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
-	fi
-}
-# Stop all current recon jobs using either SGE (if available) or KILL command
+### DEFINE FUNCTION
+##  Stop all current recon jobs using either SGE (if available) or KILL command
 function check-recons_killJobs(){
 	echo -e '\n 🗑  Interrupting and Deleting ALL active Jobs for User: '$(whoami)'\n'
 	[ $(which qdel) ] && echo -e '\n\t Deleting SGE jobs...' && qdel -u $(whoami)
@@ -222,14 +226,18 @@ function check-recons_killJobs(){
 	parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/ -type f -name 'IsRunning*' 2> /dev/null)
 	[ -z "${STATUS}" ] && exit
 }
-# Check all files are present for subject
-function check-recons_files(){
-echo 'filler'
-}
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######### PARSE FILES FOR STATS
+#########
+#########
+################################################################################################################
+################################################################################################################
 ## TODO make individual functions for each of the stats and make them option accessible 
 ##		must update TABLE header based on this
 function check-recons_stats(){
-	[ -z "${STATUS[*]}" ] && check-recons_status
+	[ ! ${SUBJECTS} ] && check-recons_status
 	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")	&& status=()
 	counter=0
 	for SUBJECT in ${SUBJECTS[@]}; do
@@ -298,6 +306,80 @@ function check-recons_stats(){
 		((counter++))
 	done
 }
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######### PRINTING TO STDOUT & FILE
+#########
+#########
+################################################################################################################
+################################################################################################################
+function check-recons_printstatus_verbose(){
+	if [ "${RUNNINGSUBJECTS[*]}" ]; then
+		echo 'Active Job Status Details ::'		
+		if [ ${VERBOSE} ]; then 
+			for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
+				echo -e "\n${BLUE}${SUBJECT}\n${GREY}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
+			done		
+		fi	
+	fi
+	if [ "${FINISHEDSUBJECTS[*]}" ]; then
+		echo 'Completed Job Status Details ::'		
+			for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
+				echo -e "\n${BLUE}${SUBJECT}\n${GREEN}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
+			done		
+	fi
+	if [ "${FAILEDSUBJECTS[*]}" ]; then
+		echo 'Failed Job Status Details ::'		
+			for SUBJECT in ${FAILEDSUBJECTS[@]}; do
+				echo -e "\n${BLUE}${SUBJECT}\n${BRED}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log'))${NC}\n"
+			done		
+	fi		
+}
+function check-recons_printstatus(){
+	# print status of active jobs
+	## TODO modify job submission script to write file to SUBJECTS_DIR/SUBJECT/script with time recon started in SGE
+	if [ "${RUNNINGSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
+			tstart=${RUNNINGTIME[$counter]} && tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s')
+			trun=$((tnow-tstart)) && runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
+			status+=$(echo "\n${RUNNINGHOSTS[$counter]}\t${SUBJECT}\t${RUNNINGSTATUS[$counter]}\t${runtime}")
+			((counter++))
+		done
+		status=$(echo -e ${status} | sort -k1 -r)		
+		header=$(echo -e "\nHOST\tSUBJECTID\tSTATUS\tTIME-ELAPSED\n")
+		echo -e "🏃  ${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: \n"
+		echo -e "${header}\n${status}" |  column -s $'\t' -t  && echo -e '\n' &&  [ $(which qhost) ] && qhost | sed '3d;' && echo -e '\n See more information by typing qstat -f -ne\n'
+	fi
+	# print status of finished jobs
+	if [ "${FINISHEDSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
+			tstart=${STARTTIMES[$counter]} && tdone=${FINISHTIMES[$counter]}
+			tdonep=$(date -d "${tdone}" '+%s') && tstart=$(date -d "${tstart}" '+%s') && trun=$((tdonep-tstart))
+			runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
+			status+=$(echo "\n${FINISHEDHOSTS[$counter]}\t${SUBJECT}\t${tdone}\t${runtime}")
+			((counter++))
+		done
+		status=$(echo -e ${status} | sort -k1 -r)
+		header=$(echo -e "\nHOST\tSUBJECTID\tCOMPLETION-TIME\tTIME-ELAPSED\n")
+		echo -e "✅ ${#FINISHEDSUBJECTS[@]} Completed Jobs :: \n"
+		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
+	fi
+	# print status of failed subjects
+	if [ "${FAILEDSUBJECTS[*]}" ]; then
+		counter=0 && status=""
+		for SUBJECT in ${FAILEDSUBJECTS[@]}; do
+			status+=$(echo "\n${FAILEDHOSTS[$counter]}\t${SUBJECT}\t${FAILPOINT[$counter]}\t${FAILTIMES[$counter]}")
+			((counter++))
+		done
+		status=$(echo -e ${status} | sort -k1 -r)
+		header=$(echo -e "\nHOST\tSUBJECTID\tRECON-STEP\tTIME-FAILED\n")
+		echo -e "🔥  ${#FAILEDSUBJECTS[@]} Failed Jobs\n"
+		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
+	fi
+}
 function check-recons_table(){
 	local counter=0
 	echo -e '\r\n'
@@ -309,68 +391,28 @@ function check-recons_table(){
 	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
 	cat ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt | column -s $'\t' -t
 }
-function check-recons_whereami(){
-	SOURCE="${BASH_SOURCE[0]}"
-	while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
-		DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-		SOURCE="$(readlink "$SOURCE")"
-		[[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
-	done
-	DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"	
+function check-recons_mgztoNIFTI(){
+	echo ''
+	## NEED LIST OF FILES TO CONVERT
 }
-function check-recons_html.sync(){
-	[ -d ${REPORTDIR} ] && check-recons_whereami && cd ${REPORTDIR} && git pull && cd ${DIR}
-}
-function check-recons_html.publish(){
-	if [ -d ${REPORTDIR} ]; then
-		check-recons_whereami && cd ${REPORTDIR}
-		if git commit -am "web update $(hostname)"; then
-			if git push; then
-				cd ${DIR}	
-			fi
-		fi
-	fi
-}
-function check-recons_html.init(){
-	# Clone Report Tools If You Don't Have Them
-	if [ ! -d ${REPORTDIR} ]; then
-		git clone ${REPORTREPO_TEMPLATE} ${REPORTDIR}
-	fi
-	# Initialize INDEX
-	PAGETITLE='Surfer-gems Web Reports'
-	PROJECTNAME='FreeSurfer Project'
-	HEADERNAME='FreeSurfer Project: Web Reports'
-	DESCRIPTION='🤵🏻 Automated web reports of 3D structural MR images reconstructed with the <a href="http://freesurfer.net"> FreeSurfer software package</a>. Generated with <a href="https://github.com/seldamat/Surfer-gems">Surfer-gems</a> and <a href="https://html5up.net">html5up</a>'	
-	check-recons_html.init.index
-	# Initialize Landing Pages
-	## - TODO clean this up.. make it more customizable 
-	## - TODO configure with default but allow user modification
-	## group
-	PAGETITLE='FreeSurfer Project: FreeSurfer Average Subject Report'
-	PROJECTNAME='FreeSurfer Project'
-	HEADERNAME='FreeSurfer Project: Group Reports'
-	DESCRIPTION='Select from different group summaries'	
-	TILES="atlas thickness curvature surface-area volumes edits contrast-to-noise"
-	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
-	TILEPAGES=("group.atlas.html" "group.thickness.html" "group.curvature.html" "group.surface-area.html" "group.tpm.html" "group.edits.html" "group.contrast-to-noise.html")	
-	HTMLFILE=${REPORTDIR}/group.landing.html	
-	check-recons_html.init.landing ${HTMLFILE} # maybe add STDIN?
-	## individuals
-	PAGETITLE='FreeSurfer Project: Individual Participant Reports'
-	PROJECTNAME='FreeSurfer Project'
-	HEADERNAME='FreeSurfer Project: Participant Reports'
-	DESCRIPTION='Select from different participant summary reports'			
-	TILES="atlas thickness curvature surface-area tpms edits contrast-to-noise"	
-	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
-	TILEPAGES=("group.atlas.html" "group.thickness.html" "group.curvature.html" "group.surface-area.html" "group.tpm.html" "group.edits.html" "group.contrast-to-noise.html")	
-	HTMLFILE=${REPORTDIR}/indiv.landing.html	
-	check-recons_html.init.landing ${HTMLFILE}
-}
+################################################################################################################
+################################################################################################################
+
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######## HTML SECTION
+########
+########
+########
+################################################################################################################
+################################################################################################################
 function check-recons_html(){
-	check-recons_html.init
-	if [ ${REFRESH} ]; then
+	if [ ! ${SUBJECTS} ]; then
 		check-recons_status
+		SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")		
 	fi
+	check-recons_html.init
 	# resources & references 
 	# http://www.compciv.org/topics/web/heredocs_and_html/
 	# http://www.compciv.org/topics/bash/text-values/#heredocs-info
@@ -386,8 +428,87 @@ function check-recons_html(){
 	# Later...
 	# Include graphics for summary report of data from subject
 }
+function check-recons_html.sync(){
+	local CWD=$(pwd)
+	[ -d ${REPORTDIR} ] && cd ${REPORTDIR} && git pull && cd ${CWD}
+}
+function check-recons_html.publish(){
+	local CWD=$(pwd)
+	if [ -d ${REPORTDIR} ]; then
+		cd ${REPORTDIR}
+		if git commit -am "web update $(hostname)"; then
+			if git push; then
+				cd ${CWD}	
+			fi
+		fi
+	fi
+}
+function check-recons_html.init(){
+	# get all jobs
+	# Clone Report Tools If You Don't Have Them
+	if [ ! -d ${REPORTDIR} ]; then
+		git clone ${REPORTREPO_TEMPLATE} ${REPORTDIR}
+	fi
+	# Initialize INDEX
+	PAGETITLE='Surfer-gems Web Reports'
+	PROJECTNAME='FreeSurfer Project'
+	HEADERNAME='FreeSurfer Project: Web Reports'
+	DESCRIPTION='🤵🏻 Automated web reports of 3D structural MR images reconstructed with the <a href="http://freesurfer.net"> FreeSurfer software package</a>. Generated with <a href="https://github.com/seldamat/Surfer-gems">Surfer-gems</a> and <a href="https://html5up.net">html5up</a>'	
+	check-recons_html.init.index
+	# Initialize Landing Pages
+	## - TODO clean this up.. make it more customizable 
+	## - TODO configure with default but allow user modification
+	## - TODO make TILEPAGES dynamic and configurable via append function
+	## group
+	PAGETITLE=${PROJECTNAME}': FreeSurfer Average Subject Report'
+	HEADERNAME=${PROJECTNAME}': Group Averaged Reports'
+	DESCRIPTION='Select from different group summaries'	
+	TILES="atlas thickness curvature surface-area volumes edits contrast-to-noise"
+	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
+	TILEPAGES=("group.atlas" "group.thickness" "group.curvature" "group.surface-area" "group.tpm" "group.edits" "group.contrast-to-noise")	
+	HTMLFILE=${REPORTDIR}/pages/group.landing.html	
+	check-recons_html.init.landing ${HTMLFILE} ${TILEPAGES} ${TILEPICS} # maybe add STDIN?
+	## individuals
+	PAGETITLE=${PROJECTNAME}': Individual Participant Reports'
+	HEADERNAME=${PROJECTNAME}': Participant Reports'
+	DESCRIPTION='Select from different participant summary reports'			
+	TILES="atlas thickness curvature surface-area tpms edits contrast-to-noise"	
+	TILEPICS=("tile.indiv.atlas" "tile.indiv.thickness" "tile.indiv.curvature" "tile.indiv.surface-area" "tile.indiv.tpm" "tile.indiv.edits" "tile.indiv.contrast-to-noise")
+	TILEPAGES=("indiv.atlas.landing" "indiv.thickness.landing" "indiv.curvature.landing" "indiv.surface-area.landing" "indiv.tpm.landing" "indiv.edits.landing" "indiv.contrast-to-noise.landing")	
+	HTMLFILE=${REPORTDIR}/pages/indiv.landing.html	
+	check-recons_html.init.landing ${HTMLFILE} ${TILEPAGES} ${TILEPICS}
+	# make individual index
+	## TODO - make this not so explicit and more automated.. (loop through dirnames)
+	## for each TILE, make a landing for every subject
+	counter=0
+	LANDINGS="atlas thickness curvature surface-area tpms edits contrast-to-noise"	
+	for LANDING in ${LANDINGS}; do
+		TILES="${SUBJECTS[*]}"
+		PAGETITLE='Subject Index: '${LANDING}
+		HEADERNAME=${PROJECTNAME}' Subject Index: '${LANDING}
+		for TILE in ${TILES[@]}; do
+			TILEPAGES+=(${TILE}'.'${LANDING})
+			TILEPICS+=("tile.${TILE}.${LANDING}")
+			# make summaries for individuals
+			check-recons_html.init.summary ${REPORTDIR}/pages/indiv.${LANDING}.${TILE}.summary.html
+		done 		
+		check-recons_html.init.landing ${REPORTDIR}/pages/indiv.${LANDING}.landing.html
+	done
+
+}
+function check-recons_html.init.tile(){
+echo ''
+}
+### DEFINE FUNCTION
+## 
+function check-recons_html.init.summary(){
+	read -r -d '' SUMMARY <<EOF
+
+EOF
+}
 function check-recons_html.init.landing(){
 	OUTFILE=${1}
+	[ ! -d ${REPORTDIR}/pages ] && mkdir -v ${REPORTDIR}/pages
 	read -r -d '' LANDING <<EOF
 <!DOCTYPE HTML>
 <!--
@@ -400,10 +521,10 @@ function check-recons_html.init.landing(){
 		<title>${PAGETITLE}</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
+		<!--[if lte IE 8]><script src="../assets/js/ie/html5shiv.js"></script><![endif]-->
 		<link rel="stylesheet" href="assets/css/main.css" />
-		<!--[if lte IE 9]><link rel="stylesheet" href="assets/css/ie9.css" /><![endif]-->
-		<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
+		<!--[if lte IE 9]><link rel="stylesheet" href="../assets/css/ie9.css" /><![endif]-->
+		<!--[if lte IE 8]><link rel="stylesheet" href="../assets/css/ie8.css" /><![endif]-->
 	</head>
 	<body>
 
@@ -412,7 +533,7 @@ function check-recons_html.init.landing(){
 
 				<!-- Header -->
 					<header id="header" class="alt">
-						<a href="index.html" class="logo"><strong>${PROJECTNAME}</strong></a>
+						<a href="../index.html" class="logo"><strong>${PROJECTNAME}</strong></a>
 						<nav>
 							<a href="#menu">Menu</a>
 						</nav>
@@ -421,10 +542,10 @@ function check-recons_html.init.landing(){
 				<!-- Menu -->
 					<nav id="menu">
 						<ul class="links">
-							<li><a href="index.html">Home</a></li>
-							<li><a href="groupreports.landing.html">Group Reports</a></li>
-							<li><a href="indivreports.landing.html">Individual Reports</a></li>
-							<li><a href="references.html">References</a></li>
+							<li><a href="../index.html">Home</a></li>
+							<li><a href="../pages/groupreports.landing.html">Group Reports</a></li>
+							<li><a href="../pages/indivreports.landing.html">Individual Reports</a></li>
+							<li><a href="../pages/references.html">References</a></li>
 						</ul>
 					</nav>
 
@@ -448,7 +569,6 @@ function check-recons_html.init.landing(){
 						<!-- One -->
 							<section id="one" class="tiles">					
 EOF
-echo "landing head written"
 printf "${LANDING}" > ${OUTFILE}
 ##
 counter=0
@@ -458,15 +578,14 @@ for TILE in ${TILES}; do
 read -r -d '' LANDINGTILE <<EOF
 								<article>
 									<span class="image">
-										<img src="images/${TILE}/${TILEPIC}.jpg" alt="" />
+										<img src="../images/${TILE}/${TILEPIC}.jpg" alt="" />
 									</span>
 									<header class="major">
-										<h3><a href="${TILEPAGE}.html" class="link">${TILE}</a></h3>
+										<h3><a href="../pages/${TILEPAGE}.html" class="link">${TILE}</a></h3>
 									</header>
 								</article>
 EOF
 # append to file
-echo "landing tiles written"
 printf "${LANDINGTILE}" >> ${OUTFILE}
 ((counter++))
 done
@@ -500,10 +619,13 @@ read -r -d '' LANDINGEND <<EOF
 	</body>
 </html>
 EOF
-echo "landing end written"
-printf "${LANDINGEND}" >> ${OUTFILE}
+	printf "${LANDINGEND}" >> ${OUTFILE}
+	TILEPAGES=()
+	TILEPICS=()
+	TILES=()
 }
-## 
+### DEFINE FUNCTION
+##  Make Index
 function check-recons_html.init.index(){
 	read -r -d '' INDEX <<EOF
 <!DOCTYPE HTML>
@@ -537,8 +659,8 @@ function check-recons_html.init.index(){
 					<nav id="menu">
 						<ul class="links">
 							<li><a href="index.html">Home</a></li>
-							<li><a href="group.landing.html">Template Average Summary</a></li>
-							<li><a href="indiv.landing.html">Individual Participant Reports</a></li>
+							<li><a href="pages/group.landing.html">Template Average Summary</a></li>
+							<li><a href="pages/indiv.landing.html">Individual Participant Reports</a></li>
 							<li><a href="references.html">References</a></li>
 						</ul>
 					</nav>
@@ -572,7 +694,7 @@ function check-recons_html.init.index(){
 											</header>
 											<p>Summaries and visualizations averaged across participants.</p>
 											<ul class="actions">
-												<li><a href="group.landing.html" class="button special">View Data</a></li>
+												<li><a href="pages/group.landing.html" class="button special">View Data</a></li>
 											</ul>
 										</div>
 									</div>
@@ -585,7 +707,7 @@ function check-recons_html.init.index(){
 											</header>
 											<p>See volumes and surfaces by participant.</p>
 											<ul class="actions">
-												<li><a href="indiv.landing.html" class="button special">View Data</a></li>
+												<li><a href="pages/indiv.landing.html" class="button special">View Data</a></li>
 											</ul>
 										</div>
 									</div>
@@ -618,16 +740,119 @@ function check-recons_html.init.index(){
 	</body>
 </html>	
 EOF
-	printf "${INDEX}" > ${REPORTDIR}/index.html && open index.html
+	printf "${INDEX}" > ${REPORTDIR}/index.html && open ${REPORTDIR}/index.html
 }
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######## PARSE OPTIONS
+########
+########
+########
+################################################################################################################
+################################################################################################################
+function check-recons_parseopts(){
+	# defs
+	check-recons_defaults && STATUS=()
+	if [ "$#" = 0 ]; then
+		check-recons_usage
+		exit
+	fi
+	# Parse Options
+	while :; do
+	    case ${1} in
+	    --status)
+		    if [ -n "$2" ]; then
+		    	[ "$2" = 'active' ] && STATUS+=("${GREY}${2}${NC}")
+		    	[ "$2" = 'done' ] && STATUS+=("${GREEN}${2}${NC}")
+		    	[ "$2" = 'failed' ] && STATUS+=("${YELLOW}${2}${NC}")
+				shift
+		    fi
+		    ;;
+	    -f|--files)
+			FILECHECK='checkemall'
+		    ;;		    		    
+	    -v|--verbose)
+			VERBOSE='givemeinfo'
+		    if [ -n "$2" ]; then
+		    	[ "$2" = 'active' ] && STATUS+=("${GREY}${2}${NC}")
+		    	[ "$2" = 'done' ] && STATUS+=("${GREEN}${2}${NC}")
+		    	[ "$2" = 'failed' ] && STATUS+=("${YELLOW}${2}${NC}")
+				shift
+		    fi			
+		    ;;		    		    
+		--web-report)
+		    if [ -n "$2" ]; then
+				STATUS+=("${2}")
+				shift
+		    fi
+			HTMLREPORT='makereport'
+			;;
+	    --detail)
+			RECONSTATS='getdetails'
+		    ;;		
+	    --kill-jobs)
+			KILLJOBS='stopActiveSGEJobs'
+		    ;;
+		-h|--help|?|--usage)
+			check-recons_usage
+			exit
+			;;
+		-sd|--subjects-dir)
+		    if [ -n "$2" ]; then
+				SUBJECTS_DIR=${2}
+				shift
+		    else
+				echo "ERROR: -sd --subjects-dir requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;
+		-s|--subjects)
+		    if [ -n "$2" ]; then
+				SUBJECTS=${2}
+				shift
+		    else
+				echo "ERROR: -s --subjects requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;
+		?*)
+		    printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
+		    exit
+		    ;;
+		*)
+		    break
+	    esac
+	    shift
+	done	
+	# declare vars for status check & printing
+	[ ! "${STATUS}" ] && STATUS=("${GREY}active{NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+
+}
+function-check-recons_dependencies(){
+	[ $(uname) = 'Darwin' ] && [ ! $(brew list | grep 'coreutils') ] && brew install coreutils && export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" && echo -e '\n#add coreutils to path\nexport PATH="/usr/local/opt/coreutils/libexec/gnubin:${PATH}"\n'  >> ${HOME}/.bash_profile
+}
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######## TOP LEVEL FLOW CONTROL
+########
+########
+########
+################################################################################################################
+################################################################################################################
 function check-recons(){
-	# define default parameters
-	check-recons_defaults
 	# parse user input
 	check-recons_parseopts "$@"
+	# defs
+	check-recons_defaults	
+	# get location of program
+	check-recons_whereami	
 	[ "${KILLJOBS}" ] && check-recons_killJobs
+	# check file manifest of each subject
+	[ "${FILECHECK}" ] && check-recons_files && check-recons_printstatus
 	# check status of active/failed/done
-	[ "${STATUS[*]}" ] && check-recons_status && check-recons_printstatus
+	[ "${STATUS[*]}" ] && [ ! "${FILECHECK}" ] && check-recons_status && check-recons_printstatus && [ "${VERBOSE}" ] && check-recons_printstatus_verbose
 	# get details of reconstruction statistics
 	[ "${RECONSTATS}" ] && check-recons_stats && check-recons_table
 	# make HTML webreport 
@@ -635,7 +860,16 @@ function check-recons(){
 	# [ ! -z "${RECONSTATS[*]}" ] && check-recons_buildtable
 	## PERFORM DIFF BETWEEN DIRS AND SUBJECTS WITH LOG FILES??
 }
-
 check-recons "$@"
 echo ""
 echo "check-recon completed the task in ${SECONDS} seconds"
+
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
+################################################################################################################
