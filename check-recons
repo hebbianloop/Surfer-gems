@@ -56,9 +56,11 @@ function check-recons_defaults(){
 	REPORTREPO=''
 	[ ! "${REPORTDIR}" ] && REPORTDIR="${HOME}/Surfer-webgems"
 	#
-	RED='\033[0;31m' && BRED='\033[1;31m' && YELLOW='\033[1;33m' && GREEN='\033[1;32m' && BLUE='\033[1;34m' && GREY='\033[1;37m' NC='\033[0m' # Colors
-	BBLUE='\033[1;40m' && NBC='\033[49m' GGREY='\033[1;30m' && YBC='\033[47m'
-	LRED='\033[1;31m'
+	# if [ ${PRETTY} ]; then
+		RED='\033[0;31m' && BRED='\033[1;31m' && YELLOW='\033[1;33m' && GREEN='\033[1;32m' && BLUE='\033[1;34m' && GREY='\033[1;37m' NC='\033[0m' # Colors
+		BBLUE='\033[1;40m' && NBC='\033[49m' GGREY='\033[1;30m' && YBC='\033[47m'
+		LRED='\033[1;31m'
+	# fi
 	# arrays 
 	RECONSTATS=() 												# array of desired status outputs
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
@@ -83,6 +85,8 @@ function check-recons_defaults(){
 ################################################################################################################
 ### DEFINE FUNCTION
 ##  Check all files are present for subject
+##  TODO -
+### 		figure out longitudinal manifest...
 function check-recons_files(){
 	echo -e "\nCross-checking Dataset with FreeSurfer File Manifest:\n"
 	[ ! "${SUBJECTS}" ] && check-recons_status
@@ -348,9 +352,11 @@ function check-recons_printstatus_verbose(){
 	fi
 	if [ "${FINISHEDSUBJECTS[*]}" ]; then
 		echo 'Completed Job Status Details ::'		
+		if [ ${VERBOSE} ]; then
 			for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
 				echo -e "\n${BLUE}${SUBJECT}\n${GREEN}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} -name 'recon-all.log')| head -n 5 )${NC}\n"
 			done		
+		fi
 	fi
 	if [ "${FAILEDSUBJECTS[*]}" ]; then
 		echo 'Failed Job Status Details ::'		
@@ -2321,7 +2327,7 @@ function check-recons(){
 	# check file manifest of each subject
 	[ "${FILECHECK}" ] && check-recons_files && check-recons_printstatus
 	# check status of active/failed/done
-	[ "${STATUS[*]}" ] && [ ! "${FILECHECK}" ] && check-recons_status && check-recons_printstatus && [ "${VERBOSE}" ] && check-recons_printstatus_verbose
+	[ "${STATUS[*]}" ] && [ ! "${FILECHECK}" ] && check-recons_status && check-recons_printstatus || [ "${VERBOSE}" ] && check-recons_printstatus_verbose
 	# get details of reconstruction statistics
 	[ "${RECONSTATS}" ] && check-recons_stats && check-recons_table
 	# make HTML webreport 
