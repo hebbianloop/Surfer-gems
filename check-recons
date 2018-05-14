@@ -1,17 +1,18 @@
-#!/usr/local/bin/bash
+#!/bin/bash
 #
 ## The Magical Surfer Gem
 ##
 SECONDS=0
 ##
 ## TODO read file created from job submission script to know when recon started (to calculate elapsed time)
-## TODO add HTML of SURFACES, VOLUMES, EDITS pMAP
+## TODO add HTML of SURFACES, EDITS pMAP
 ## TODO MAKE FASTER
 ## TODO Average DEFECT size
 ## TODO this would be so much better with JSON databasing (maybe with mongodb?)
 ## 		-- create regularly updating JSON file with job information upon SGE submission
 ##		-- build JSON file with subject recon information (edited? if so where? which commands run? CNR? etc)
 ##		-- build JSON file with subject demographic information
+
 ### DEFINE FUNCTION
 ##  Usage info
 function check-recons_usage(){
@@ -20,8 +21,8 @@ read -r -d '' HELPMESSAGE <<EOF
 
 This program contains a bounty of gems for working with FreeSurfer Datasets. 
 
-\n\n ■ Getting Help
-\n\t >> ${0##*/}
+\n\n ■ Summarize all jobs in SUBJECTS_DIR
+\n\t >> ${0##*/} --status
 \n\t >> ${0##*/} -h
 \n\t >> ${0##*/} -u
 \n\t >> ${0##*/} --help
@@ -29,8 +30,16 @@ This program contains a bounty of gems for working with FreeSurfer Datasets.
 
 \n\n
  ■ EXAMPLE:
- 	${0##*/} -sd ${SUBJECTS_DIR}
- 	  ⤷ 
+ 	${0##*/} -sd ${SUBJECTS_DIR}\n
+ 	\t\t⤷ 
+
+
+\n\n ■ Getting Help
+\n\t >> ${0##*/}
+\n\t >> ${0##*/} -h
+\n\t >> ${0##*/} -u
+\n\t >> ${0##*/} --help
+\n\t >> ${0##*/} --usage
 
 EOF
 echo -e ${HELPMESSAGE} | fold -w 80 -s 
@@ -51,29 +60,51 @@ function check-recons_whereami(){
 ### DEFINE FUNCTION
 ##  Preallocate arrays and default values
 function check-recons_defaults(){
-	# declare vars for HTML
-	REPORTREPO_TEMPLATE="https://github.com/seldamat/Surfer-webgems.git"
-	REPORTREPO=''
-	[ ! "${REPORTDIR}" ] && REPORTDIR="${HOME}/Surfer-webgems"
-	#
-	# if [ ${PRETTY} ]; then
-		RED='\033[0;31m' && BRED='\033[1;31m' && YELLOW='\033[1;33m' && GREEN='\033[1;32m' && BLUE='\033[1;34m' && GREY='\033[1;37m' NC='\033[0m' # Colors
-		BBLUE='\033[1;40m' && NBC='\033[49m' GGREY='\033[1;30m' && YBC='\033[47m'
-		LRED='\033[1;31m'
-	# fi
-	# arrays 
-	RECONSTATS=() 												# array of desired status outputs
+	## Arrays 
+	[ ! ${STATUS} ] && STATUS=()								# init STATUS if it doesn't exist 
+	#  pre-allocate variables here to fill later
+	RECONSTATS=() 												# array of status outputs across subjects
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
 	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
 	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
 	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
+	## stats arrays for table detail
 	status=() && hname=() && talqa=() && bcnr=() && acnr=()
-	ndef=() && leno=() && reno=() && bmedits=() && runtime=()	
-	# table preallocation
-	TAB=$'\t' && TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
-	# file to check for conversion (used for web reports)
+	ndef=() && leno=() && reno=() && bmedits=() && runtime=()
+	wmerased=() && wmfilled=()	
+	## manifest check list
+	MISSING=() && EXISTS=() && RERUNSUB=() && COMPLETESUB=() 	# array for subjects with missing/existing/complete data or those needing rerun
+	## Pretty Colors
+	[ ! ${PRETTY} ] && PRETTY='paintitpretty'
+	#  make things pretty by default unless user asks
+	if [ ${PRETTY} = 'paintitpretty' ]; then
+		RED='\033[0;31m'
+		BRED='\033[1;31m'
+		YELLOW='\033[1;33m'
+		GREEN='\033[1;32m'
+		BLUE='\033[1;34m'
+		GREY='\033[1;37m'
+		NC='\033[0m' 
+		BBLUE='\033[1;40m'
+		NBC='\033[49m'
+		GGREY='\033[1;30m'
+		YBC='\033[47m'
+		LRED='\033[1;31m'
+	else
+		RED='' && BRED='' && YELLOW=''
+		GREEN='' && BLUE='' && GREY=''
+		NC='' && BBLUE='' && NBC=''
+		GGREY='' && YBC='' && LRED=''
+	fi	
+	## Table Preallocation
+	TAB=$'\t' && TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}NumWhiteMaskDel${TAB}NumWhiteMaskFill${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
+	# HTML Web Report
+	REPORTREPO_TEMPLATE="https://github.com/seldamat/Surfer-webgems.git"
+	REPORTREPO=''
+	[ ! "${REPORTDIR}" ] && REPORTDIR="${HOME}/Surfer-webgems"	
+	## Files for Webreports
 	SURFs='lh.pial lh.white rh.pial rh.white'
-	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'
+	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'	
 }
 ################################################################################################################
 ################################################################################################################
@@ -92,7 +123,6 @@ function check-recons_files(){
 	[ ! "${SUBJECTS}" ] && check-recons_status
 	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
 	MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && NUMFILES=$(echo "${MANIFEST}" | wc -l)
-	MISSING=() && EXISTS=() && RERUNSUB=() && COMPLETESUB=()
 	# build list of files
 	## TODO - 
 	# iterate and check subjects
@@ -260,8 +290,7 @@ function check-recons_killJobs(){
 ## TODO make individual functions for each of the stats and make them option accessible 
 ##		must update TABLE header based on this
 function check-recons_stats(){
-	[ ! ${SUBJECTS} ] && check-recons_status
-	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")	&& status=()
+	[ ! ${SUBJECTS} ] && check-recons_status && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")	&& status=()
 	counter=0
 	for SUBJECT in ${SUBJECTS[@]}; do
 		printf "\r%s💤  %d/%d -- Analyzing Reconstruction Stats" "$(tput el)" $counter ${#SUBJECTS[*]}
@@ -298,8 +327,7 @@ function check-recons_stats(){
 			runtime+=("$(echo nan)")
 		fi
 		# Count up the number of brainmask edits
-		printf "\r%s✏️  📊  %d/%d -- Compiling Edits\r" "$(tput el)" $counter ${#SUBJECTS[*]}
-		recon-all -s ${SUBJECT} -show-edits > ${SUBJECTS_DIR}'/'${SUBJECT}'/manual-edits-report.txt'
+		printf "\r%s✏️  📊  %d/%d -- Compiling Edits\r" "$(tput el)" $counter ${#SUBJECTS[*]} && check-recons_subject-edits ${SUBJECT}
 		# get last reported recon status
 		reconstatus+=("$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')")
 		# get talairach quality assurance
@@ -312,7 +340,10 @@ function check-recons_stats(){
 		printf "\r%s✏️  📊  %d/%d -- Calculating CNR\r" "$(tput el)" ${counter} ${#SUBJECTS[*]}
 		bcnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/orig/001.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
 		acnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/T1.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
-		bmedits+=($(grep -Eo "[0-9]{1,20} edits in brainmask.mgz" ${SUBJECTS_DIR}/${SUBJECT}'/manual-edits-report.txt' | awk '{print $1}'))
+		# bmedits+=($(grep -Eo "[0-9]{1,20} edits in brainmask.mgz" ${SUBJECTS_DIR}/${SUBJECT}'/manual-edits-report.txt' | awk '{print $1}'))
+		bmedits+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}'))
+		wmerased+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}'))
+		wmfilled+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}'))
 		[ ! "${hname[$counter]}" ] && hname[$counter]=nan
 		[ ! "${runtime[$counter]}" ] && runtime[$counter]=nan
 		[ ! "${status[$counter]}" ] && status[$counter]=nan
@@ -323,11 +354,24 @@ function check-recons_stats(){
 		[ ! "${leno[$counter]}" ] && leno[$counter]=nan
 		[ ! "${reno[$counter]}" ] && reno[$counter]=nan
 		[ ! "${bmedits[$counter]}" ] && bmedits[$counter]=nan
-		# echo -e '\n\r'
-		# echo -e "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"		
-		# exit
+		[ ! "${wmerased[$counter]}" ] && wmerased[$counter]=nan
+		[ ! "${wmfilled[$counter]}" ] && wmfilled[$counter]=nan
+		#
 		((counter++))
 	done
+}
+### DEFINE FUNCTION
+# summarize subject edits
+function check-recons_subject-edits(){
+	# ${FREESURFER_HOME}/recon-all -s ${1} -show-edits > ${SUBJECTS_DIR}'/'${1}'/manual-edits-report.txt'
+	${FREESURFER_HOME}/bin/bmedits2surf --s ${1} > /dev/null
+	${FREESURFER_HOME}/bin/wmedits2surf --s ${1} > /dev/null
+	local bmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}')
+	local wmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}')
+	local wmfill=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}')
+	printf '\t# Erased voxels in brainmask: %d\n' ${bmerase}
+	printf '\t# Erased voxels in white matter mask: %d\n' ${wmerase}
+	printf '\t# Filled voxels in white matter mask: %d\n' ${wmfill}
 }
 ## TODO get volume/morph stats and print to separate table
 ##
@@ -423,7 +467,7 @@ function check-recons_table(){
 	echo -e '\r\n'
 	for SUBJECT in ${SUBJECTS[@]}; do
 		printf "📝  $counter/${#SUBJECTS[*]} -- Building Table\r"
-		TABLE+=($(echo "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"))
+		TABLE+=($(echo "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${wmfilled[$counter]}\t${wmerased[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"))
 		((counter++))
 	done
 	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
@@ -2213,7 +2257,7 @@ EOF
 ################################################################################################################
 function check-recons_parseopts(){
 	# defs
-	check-recons_defaults && STATUS=()
+	check-recons_defaults
 	if [ "$#" = 0 ]; then
 		check-recons_usage
 		exit
@@ -2221,30 +2265,48 @@ function check-recons_parseopts(){
 	# Parse Options
 	while :; do
 	    case ${1} in
+		--no-colors|--plain|-nc)
+			PRETTY='plainjane' && check-recons_defaults
+			;;		    	
 	    --status)
 		    if [ -n "$2" ]; then
-		    	[ "$2" = 'active' ] && STATUS+=("${GREY}${2}${NC}")
-		    	[ "$2" = 'done' ] && STATUS+=("${GREEN}${2}${NC}")
-		    	[ "$2" = 'failed' ] && STATUS+=("${YELLOW}${2}${NC}")
+		    	if [ "$2" = 'active' ]; then
+		    		STATUS+=("${GREY}${2}${NC}")
+		    	elif [ "$2" = 'done' ]; then
+		    		STATUS+=("${GREEN}${2}${NC}")
+		    	elif [ "$2" = 'failed' ]; then
+		    		STATUS+=("${YELLOW}${2}${NC}")
+		    	else
+		    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
+		    	fi
 				shift
+			else
+				STATUS=('active' 'done' 'failed')
 		    fi
 		    ;;
-		--convert)
-			CONVERTFILES='convert'
-			## add specification here?
-			;;
-	    -f|--files)
-			FILECHECK='checkemall'
-		    ;;		    		    
 	    -v|--verbose)
 			VERBOSE='givemeinfo'
 		    if [ -n "$2" ]; then
-		    	[ "$2" = 'active' ] && STATUS+=("${GREY}${2}${NC}")
-		    	[ "$2" = 'done' ] && STATUS+=("${GREEN}${2}${NC}")
-		    	[ "$2" = 'failed' ] && STATUS+=("${YELLOW}${2}${NC}")
+		    	if [ "$2" = 'active' ]; then
+		    		STATUS+=("${GREY}${2}${NC}")
+		    	elif [ "$2" = 'done' ]; then
+		    		STATUS+=("${GREEN}${2}${NC}")
+		    	elif [ "$2" = 'failed' ]; then
+		    		STATUS+=("${YELLOW}${2}${NC}")
+		    	else
+		    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
+		    	fi
 				shift
-		    fi			
-		    ;;		    		    
+			else
+				STATUS=('active' 'done' 'failed')
+		    fi		
+		    ;;			    
+		--convert)
+			CONVERTFILES='convertintoNIFTI'
+			;;		
+	    -f|--files)
+			FILECHECK='checkemall'
+		    ;;		    		    	    		    
 		--web-report)
 		    if [ -n "$2" ]; then
 				STATUS+=("${2}")
@@ -2257,7 +2319,7 @@ function check-recons_parseopts(){
 				REPORTDIR="${2}"
 				shift
 			else
-				echo "ERROR: --web-report-dir -wrd requires a non empty option argument.\n" >&2
+				echo -e "${BRED}ERROR: ${NC}--web-report-dir -wrd requires a non empty option argument.\n" >&2
 				exit				
 		    fi
 			HTMLREPORT='makereport'
@@ -2277,7 +2339,7 @@ function check-recons_parseopts(){
 				SUBJECTS_DIR=${2}
 				shift
 		    else
-				echo "ERROR: -sd --subjects-dir requires a non empty option argument.\n" >&2
+				echo -e "${BRED}ERROR: ${NC}-sd --subjects-dir requires a non empty option argument.\n" >&2
 				exit
 		    fi
 		    ;;
@@ -2286,22 +2348,35 @@ function check-recons_parseopts(){
 				SUBJECTS=${2}
 				shift
 		    else
-				echo "ERROR: -s --subjects requires a non empty option argument.\n" >&2
+				echo -e "${BRED}ERROR: ${NC}-s --subjects requires a non empty option argument.\n" >&2
 				exit
 		    fi
 		    ;;
 		?*)
-		    printf '\n ‼️ Warning: Unknown option: %s\n' "${1}" >&2
+		    printf '\n'${YELLOW}' Warning: '${NC}'Unknown option: "%s"\n..exiting' "${1}" >&2
 		    exit
 		    ;;
 		*)
 		    break
 	    esac
 	    shift
-	done	
+	done
 }
-function-check-recons_dependencies(){
-	[ $(uname) = 'Darwin' ] && [ ! $(brew list | grep 'coreutils') ] && brew install coreutils && export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" && echo -e '\n#add coreutils to path\nexport PATH="/usr/local/opt/coreutils/libexec/gnubin:${PATH}"\n'  >> ${HOME}/.bash_profile
+function check-recons_dependencies(){
+	if [ $(uname) = 'Darwin' ]; then
+		# check for coreutils
+		if [ ! $(brew list | grep 'coreutils') ]; then
+			brew install coreutils
+			export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+			export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+			echo -e '\n#add coreutils to path\nexport PATH="/usr/local/opt/coreutils/libexec/gnubin:${PATH}"\nMANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"\n'  >> ${HOME}/.bash_profile
+		fi
+		# check date in path is coreutils date
+		if [ ! "$(date --version 2&> /dev/null | grep 'GNU coreutils')" ]; then
+			export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+			export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
+		fi					
+	fi
 }
 ################################################################################################################
 ################################################################################################################
@@ -2313,6 +2388,8 @@ function-check-recons_dependencies(){
 ################################################################################################################
 ################################################################################################################
 function check-recons(){
+	# check dependencies
+	check-recons_dependencies
 	# parse user input
 	check-recons_parseopts "$@"
 	# defs
