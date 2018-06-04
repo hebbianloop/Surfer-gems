@@ -68,7 +68,7 @@ function check-recons_defaults(){
 	## Arrays 
 	[ ! ${STATUS} ] && STATUS=()								# init STATUS if it doesn't exist 
 	#  pre-allocate variables here to fill later
-	[ ! "${SUBJECTS}" ] && SUBJECTS=$(find ${SUBJECTS_DIR} \( ! -regex '.*/\..*' \) -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}')
+	[ ! "${SUBJECTS}" ] && SUBJECTS=$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \) -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}')
 	[ ! "${RECONSTATS}" ] && RECONSTATS=() 												# array of status outputs across subjects
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
 	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
@@ -111,7 +111,7 @@ function check-recons_defaults(){
 	## Files for Webreports
 	SURFs='lh.pial lh.white rh.pial rh.white'
 	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'
-	DEFACEFILES='T1'	
+	#DEFACEFILES='T1'	
 }
 ################################################################################################################
 ################################################################################################################
@@ -2347,6 +2347,8 @@ function check-recons_parseopts(){
 		    if [ -n "$2" ]; then
 				DEFACEFILES+=("${2}")
 				shift
+			else
+				DEFACEFILES='orig T1 001'
 		    fi			
 			;;			
 	    --stats)
