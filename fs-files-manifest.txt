@@ -21,7 +21,6 @@ brainmask.auto.mgz
 brainmask.mgz
 build-stamp.txt
 ctrl_pts.mgz
-edits.mgz
 filled.mgz
 lastcall.build-stamp.txt
 lh.BA1_exvivo.label
