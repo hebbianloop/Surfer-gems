@@ -631,8 +631,8 @@ function check-recons_html.publish(){
 }
 function check-recons_html.papaya(){
 	local subject=${1} && local images=${2} && local cwd=$(pwd)
-	# cd ${REPORTDIR}/assets/papaya && ${REPORTDIR}/assets/papaya/papaya-builder.sh -images ${images} -local
-	# cp ${REPORTDIR}/assets/papaya/build/papaya.js ${REPORTDIR}/assets/js/${subject}.papaya.js && cd ${cwd}
+	cd ${REPORTDIR}/assets/papaya && ${REPORTDIR}/assets/papaya/papaya-builder.sh -images ${images} -local
+	cp ${REPORTDIR}/assets/papaya/build/papaya.js ${REPORTDIR}/assets/js/${subject}.papaya.js && cd ${cwd}
 }
 function check-recons_html.init(){
 	# get all jobs
@@ -655,7 +655,7 @@ function check-recons_html.init(){
 	PAGETITLE=${PROJECTNAME}'| FreeSurfer Average Subject Report'
 	HEADERNAME=${PROJECTNAME}': Group Averaged Reports'
 	DESCRIPTION='Select from different group summaries'	
-	TILES="atlas thickness curvature surface-area volumes edits contrast-to-noise"
+	TILES=("atlas" "thickness" "curvature" "surface-area" "volumes" "edits" "contrast-to-noise")
 	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
 	TILEPAGES=("group.atlas" "group.thickness" "group.curvature" "group.surface-area" "group.tpm" "group.edits" "group.contrast-to-noise")	
 	HTMLFILE=${REPORTDIR}/pages/group.landing.html	
@@ -669,6 +669,7 @@ function check-recons_html.init(){
 	for TILE in "${TILES[@]}"; do
 		TILEPAGES+=("indiv.landing.${TILE}")
 		TILEPICS+=("tile."${TILE})
+		## insert function for retrieving tile descriptions
 		TILEDESCRIPTIONS+=("(Age, Sex)")		
 	done
 	HTMLFILE=${REPORTDIR}/pages/indiv.landing.html
