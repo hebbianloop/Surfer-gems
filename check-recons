@@ -16,33 +16,49 @@ SECONDS=0
 ### DEFINE FUNCTION
 ##  Usage info
 function check-recons_usage(){
+	check-recons_defaults
 read -r -d '' HELPMESSAGE <<EOF
-\n\033[33;5m✨\033[0m${GREY}The Magical Surfer-gem Box${BLUE}\033[33;5m✨\033[0m\n\n
+\n\033[33;5m✨\033[0m${BLUE}The Magical Surfer-gem Box${BLUE}\033[33;5m✨\033[0m\n\n
 
-This program contains a bounty of gems for working with FreeSurfer Datasets. 
+${GREY}This program contains a bounty of gems for working with FreeSurfer Datasets.${NC}
 
-\n\n ■ Summarize all jobs in SUBJECTS_DIR
+\n\n ${BBLUE}■ ${GREY}Summarizing Jobs${NC}
+\n\n\t ${GREY}Checking a single subject${NC}
+\n\t >> ${0##*/} -s SUBJECTID 
+\n\n\t ${GREY}Also works for lists${NC}
+\n\t >> ${0##*/} -s "SUBJECT-1 SUBJECT-2 SUBJECT-3"
+\n\n\t ${GREY}Get more information${NC}
+\n\t >> ${0##*/} -s "SUBJECT-1 SUBJECT-2 SUBJECT-3" -v
+\n\n\t ${GREY}Summarize all data in SUBJECTS_DIR${NC}
 \n\t >> ${0##*/} --status
-\n\t >> ${0##*/} -h
-\n\t >> ${0##*/} -u
-\n\t >> ${0##*/} --help
-\n\t >> ${0##*/} --usage
+\n\n\t ${GREY}Check only failed${NC}
+\n\t >> ${0##*/} --status failed
+\n\n\t ${GREY}Check only currently running jobs${NC}
+\n\t >> ${0##*/} --status active
+\n\n\t ${GREY}Check only completed jobs${NC}
+\n\t >> ${0##*/} --status done
+\n\n\t ${GREY}Check only completed and failed jobs${NC}
+\n\t >> ${0##*/} --status failed
+\n\n\t${GREY} ℹ️ You can always add${NC} -v${GREY} for more information${NC}
 
-\n\n
- ■ EXAMPLE:
- 	${0##*/} -sd ${SUBJECTS_DIR}\n
- 	\t\t⤷ 
+\n\n ${BBLUE}■ ${GREY}Check whether SUBJECT has completed file manifest${NC}
+\n\t >> ${0##*/} -s SUBJECTID -f
+\n\n\t ${GREY}print more information about which files are missing with${NC} -v
+\n\t >> ${0##*/} -s SUBJECTID -f -v 
 
-
-\n\n ■ Getting Help
+\n\n ${BBLUE}■ ${GREY}Getting Help${NC}
 \n\t >> ${0##*/}
 \n\t >> ${0##*/} -h
 \n\t >> ${0##*/} -u
 \n\t >> ${0##*/} --help
 \n\t >> ${0##*/} --usage
 
+\n\n ${BBLUE}■ ${GREY}No Colors (Plain Text)${NC}
+\n\t >> ${0##*/} -nc  --help
+\n\t >> ${0##*/} -s SUBJECTID -nc
+
 EOF
-echo -e ${HELPMESSAGE} | fold -w 80 -s 
+echo -e ${HELPMESSAGE} | fold -w 120 -s # print and wrap
 }
 ### DEFINE FUNCTION
 ## figure out where function is being called from (follow symlinks)
@@ -68,7 +84,7 @@ function check-recons_defaults(){
 	## Arrays 
 	[ ! ${STATUS} ] && STATUS=()								# init STATUS if it doesn't exist 
 	#  pre-allocate variables here to fill later
-	[ ! "${SUBJECTS}" ] && SUBJECTS=$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \) -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}')
+	[ ! "${SUBJECTS}" ] && echo -e "...checking SUBJECTS_DIR: ${SUBJECTS_DIR}" && SUBJECTS=$(ls ${SUBJECTS_DIR}/*/scripts/recon-all.log | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}')
 	[ ! "${RECONSTATS}" ] && RECONSTATS=() 												# array of status outputs across subjects
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
 	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
@@ -111,7 +127,7 @@ function check-recons_defaults(){
 	## Files for Webreports
 	SURFs='lh.pial lh.white rh.pial rh.white'
 	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'
-	#DEFACEFILES='T1'	
+	#DEFACEFILES='T1'
 }
 ################################################################################################################
 ################################################################################################################
@@ -139,7 +155,7 @@ function check-recons_files(){
 		[ "$(echo ${FAILEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🚧  ${BLUE}${SUBJECT}${YELLOW} (failed)")
 		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BLUE}${SUBJECT}${GREEN} (done)")
 		for FILE in ${MANIFEST}; do
-			if [ "$(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name ${FILE} -type f)" ]; then
+			if [ "$(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name ${FILE} )" ]; then
 				#echo -e "${GREEN}✔ ${SUBJECT} :: ${MGZ} (ok)\n"
 				EXISTS+=("${SUBJECT} ${FILE}")
 			else
@@ -213,15 +229,15 @@ function check-recons_files(){
 ##  Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
 function check-recons_status(){
 	##	
-	check-recons_defaults
+        check-recons_defaults
 	# declare vars for status check & printing
 	[ ! "${STATUS}" ] && STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")	
 	echo -e "\nFinding FreeSurfer Jobs with Status: ${STATUS[@]} \n\n   🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
 	# Find all subjects with IsRunning file, get current status, time and host
 	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
-		for SUBJECT in ${SUBJECTS}; do			
-			RUNNINGSUBJECTS+=($(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
+	        for SUBJECT in ${SUBJECTS}; do
+		    RUNNINGSUBJECTS+=($(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
 		done
 		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
 			#printf "🏃‍  ...found ${#RUNNINGSUBJECTS[*]} active jobs\r"
@@ -234,7 +250,7 @@ function check-recons_status(){
 	if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
 		RECONS=""
 		for SUBJECT in ${SUBJECTS}; do
-			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \) -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "
+		    RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "
 		done
 		# echo -e '\n\r'
 		for RECON in ${RECONS}; do
@@ -249,10 +265,10 @@ function check-recons_status(){
 		done
 	fi
 	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
-		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
+		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
 		RECONS=""
 		for SUBJECT in ${SUBJECTS}; do
-			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \) -type f -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "			
+			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "			
 		done
 		# [ ! "${RECONS}" ] && 
 		# echo -e '\r'
@@ -278,13 +294,13 @@ function check-recons_status(){
 	# RERUNSUB+=("${FAILEDSUBJECTS[*]}") && COMPLETESUB+=("${SUBJECT}")	
 	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
 	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
-		if [  $(echo "${STATUS[*]}" | grep 'failed') ]; then
+		if [  "$(echo "${STATUS[*]}" | grep 'failed')" ]; then
 			echo -e "🙌  No Failed Jobs! All Participants Report Successful Completion\n\t..give yourself a pat on the back (hint: 🍩)"
 		fi
-		if [ $(echo "${STATUS[*]}" | grep 'done') ]; then
+		if [ "$(echo "${STATUS[*]}" | grep 'done')" ]; then
 			echo -e "∅  No Completed Jobs Found.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
 		fi
-		if [ $(echo "${STATUS[*]}" | grep 'active') ]; then
+		if [ "$(echo "${STATUS[*]}" | grep 'active')" ]; then
 			echo -e "∅  No Active Jobs Detected.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
 		fi
 	fi
@@ -296,7 +312,7 @@ function check-recons_killJobs(){
 	[ $(which qdel) ] && echo -e '\n\t Deleting SGE jobs...' && qdel -u $(whoami)
 	[ ! $(which qdel) ] && echo -e "🖐  ${YELLOW}Hanging up all local processes matching ${GREY}'${KILLPATTERN}'${YELLOW} pattern${NC}" && kill -9 $(echo $(ps aux | grep 'recon-all -s '| tail -n +2 | awk '{print $2}')) 2> /dev/null
 	echo -e '\n\t Cleaning up IsRunning files...\n'
-	[ "$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \) -type f -name 'IsRunning*' 2> /dev/null)" ] && parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/ -type f -name 'IsRunning*' 2> /dev/null)
+	[ "$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \)  -name 'IsRunning*' 2> /dev/null)" ] && parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/  -name 'IsRunning*' 2> /dev/null)
 	[ -z "${STATUS}" ] && exit
 }
 ### DEFINE FUNCTION
@@ -560,7 +576,7 @@ function check-recons_convert.NIFTI(){
 ### Deface files
 function check-recons_deface(){
 	for defacefile in ${DEFACEFILES}; do
-		parallel -k --link --bar mri_deface {} ${SOURCEPATH}/talairach_mixed_with_skull.gca ${SOURCEPATH}/face.gca {} ::: $(find ${SUBJECTS_DIR} -type f -name ${defacefile}'.mgz')
+		parallel -k --link --bar mri_deface {} ${SOURCEPATH}/talairach_mixed_with_skull.gca ${SOURCEPATH}/face.gca {} ::: $(find ${SUBJECTS_DIR}  -name ${defacefile}'.mgz')
 	done
 }
 ################################################################################################################
@@ -678,7 +694,7 @@ function check-recons_html.init.tile(){
 		searchfor='T1 brainmask wm aseg aparc+aseg aparc.DKTatlas+aseg aparc.a2009s+aseg wmparc'
 		found=""
 		for search in ${searchfor}; do
-			found+="$(find ${SUBJECTS_DIR}/${subject} \( ! -regex '.*/\..*' \) -type f -name "${search}.nii.gz") "
+			found+="$(find ${SUBJECTS_DIR}/${subject} \( ! -regex '.*/\..*' \)  -name "${search}.nii.gz") "
 		done
 		check-recons_html.papaya "${subject}" "${found}" 
 		check-recons_html.init.tile.papaya "$(echo ${searchfor} | sed 's|+|_|g' | sed 's|\.|_|g')" "${outfile}" ${subject}
@@ -2327,12 +2343,16 @@ EOF
 ################################################################################################################
 ################################################################################################################
 function check-recons_parseopts(){
-	# defs
-	check-recons_defaults
+	# print usage and exit
 	if [ "$#" = 0 ]; then
 		check-recons_usage
 		exit
 	fi
+	# if [ ! "$(echo $@ | grep '\help\|-h\|\?\|usage')" ]; then
+	# 	echo 'Reading Defaults'
+	# 	check-recons_defaults
+	# fi
+	check-recons_defaults
 	# Parse Options
 	while :; do
 	    case ${1} in
@@ -2420,7 +2440,7 @@ function check-recons_parseopts(){
 				STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 		    fi
 		    ;;		    				    		    	    		    					
-		-h|--help|?|--usage)
+		-h|--help|help|?|--usage|usage)
 			check-recons_usage
 			exit
 			;;
@@ -2447,7 +2467,8 @@ function check-recons_dependencies(){
 		if [ ! "$(date --version 2&> /dev/null | grep 'GNU coreutils')" ]; then
 			export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 			export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
-		fi					
+		fi
+		#TODO check for GNU parallel					
 	fi
 }
 ################################################################################################################
@@ -2465,7 +2486,7 @@ function check-recons(){
 	# parse user input
 	check-recons_parseopts "$@"
 	# defs
-	check-recons_defaults	
+	check-recons_defaults
 	# get location of program
 	check-recons_whereami	
 	# convert files if user asks
