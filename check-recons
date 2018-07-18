@@ -38,7 +38,7 @@ ${GREY}This program contains a bounty of gems for working with FreeSurfer Datase
 \n\n\t ${GREY}Check only completed jobs${NC}
 \n\t >> ${0##*/} --status done
 \n\n\t ${GREY}Check only completed and failed jobs${NC}
-\n\t >> ${0##*/} --status failed
+\n\t >> ${0##*/} --status failed --status done
 \n\n\t${GREY} ℹ️ You can always add${NC} -v${GREY} for more information${NC}
 
 \n\n ${BBLUE}■ ${GREY}Check whether SUBJECT has completed file manifest${NC}
@@ -556,8 +556,9 @@ function check-recons_table(){
 ## DEFINE FUNCTION
 ### Convert file into NIFTI
 function check-recons_convert.NIFTI(){
-	[ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	echo -e '\nSubjects Queued for Conversion...'
+	SUBJECTS=${1}
+	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
+	echo -e '\nConverting...'
 	printf '\t%s\n' $(echo ${SUBJECTS[@]})
 	echo -e '\nFiles Queued for Conversion...'
 	printf '\t%s.nii.gz\n' $(echo ${MGZs} ${SURFs})
@@ -593,7 +594,7 @@ function check-recons_deface(){
 ################################################################################################################
 function check-recons_html(){
 	echo -e "${BLUE}Building Web-Report${NC}"
-	if [ ! ${SUBJECTS} ]; then
+	if [ ! "${SUBJECTS}" ]; then
 		check-recons_status
 		SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")		
 	fi
@@ -630,8 +631,8 @@ function check-recons_html.publish(){
 }
 function check-recons_html.papaya(){
 	local subject=${1} && local images=${2} && local cwd=$(pwd)
-	cd ${REPORTDIR}/assets/papaya && ${REPORTDIR}/assets/papaya/papaya-builder.sh -images ${images} -local
-	cp ${REPORTDIR}/assets/papaya/build/papaya.js ${REPORTDIR}/assets/js/${subject}.papaya.js && cd ${cwd}
+	# cd ${REPORTDIR}/assets/papaya && ${REPORTDIR}/assets/papaya/papaya-builder.sh -images ${images} -local
+	# cp ${REPORTDIR}/assets/papaya/build/papaya.js ${REPORTDIR}/assets/js/${subject}.papaya.js && cd ${cwd}
 }
 function check-recons_html.init(){
 	# get all jobs
@@ -644,6 +645,7 @@ function check-recons_html.init(){
 	PROJECTNAME='Demo FreeSurfer Project'
 	HEADERNAME='FreeSurfer Project: Web Reports'
 	DESCRIPTION='🤵🏻 Automated web reports of 3D structural MR images reconstructed with the <a href="http://freesurfer.net"> FreeSurfer software package</a>. Generated with <a href="https://github.com/seldamat/Surfer-gems">Surfer-gems</a>, <a href="https://github.com/rii-mango/Papaya.git">Papaya</a> and <a href="https://html5up.net">html5up</a>'	
+	echo -e "${YELLOW}❍ building home page${NC}"
 	check-recons_html.init.index
 	# Initialize Landing Pages
 	## - TODO clean this up.. make it more customizable 
@@ -657,47 +659,51 @@ function check-recons_html.init(){
 	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
 	TILEPAGES=("group.atlas" "group.thickness" "group.curvature" "group.surface-area" "group.tpm" "group.edits" "group.contrast-to-noise")	
 	HTMLFILE=${REPORTDIR}/pages/group.landing.html	
+	echo -e "${YELLOW}❍ building landing page${NC}" ${HTMLFILE}
 	check-recons_html.init.landing ${HTMLFILE}
 	## create subject index landing page with nested list of data view types (convergent recursion)
 	PAGETITLE=${PROJECTNAME}'| Subject Index'
 	HEADERNAME=${PROJECTNAME}': Subject Index'	
-	DESCRIPTION='Browse brain volumes, surfaces, summary reports and statistics'			
-	TILES=("${SUBJECTS[@]}")
+	DESCRIPTION='Browse brain volumes, surfaces, summary reports and statistics'		
+	TILES=(${SUBJECTS[@]})
 	for TILE in "${TILES[@]}"; do
 		TILEPAGES+=("indiv.landing.${TILE}")
 		TILEPICS+=("tile."${TILE})
 		TILEDESCRIPTIONS+=("(Age, Sex)")		
 	done
 	HTMLFILE=${REPORTDIR}/pages/indiv.landing.html
+	echo -e "${YELLOW}❍ building landing page${NC}" ${HTMLFILE}
 	check-recons_html.init.landing ${HTMLFILE} ${TILEDESCRIPTIONS}
 	### create nested landings 
 	TILEPAGES=() && TILEPICS=()
-	for SUBJECT in "${SUBJECTS[@]}"; do
+	for SUBJECT in ${SUBJECTS[@]}; do
 		TILES=("atlas" "surface-morphometrics" "edits" "contrast-to-noise")
 		HEADERNAME=' Surface &amp; Volume Summaries: '${SUBJECT}
 		for TILE in "${TILES[@]}"; do
 			TILEPAGES+=("${SUBJECT}.${TILE}")
 			TILEPICS+=("tile.${TILE}.${LANDING}")
+			echo -e "${YELLOW}❍ building page for tile ${NC}" "${REPORTDIR}/pages/${SUBJECT}.${TILE}.html"
 			check-recons_html.init.tile ${TILE} "${REPORTDIR}/pages/${SUBJECT}.${TILE}.html" ${SUBJECT}
 			# generate data viewer page (papaya or 3d render somehow or screenshots in carousel)
 			# check-recons_html.init.summary ${REPORTDIR}/pages/indiv.${LANDING}.${TILE}.summary.html
-		done 		
+		done
+		echo -e "${YELLOW}❍ building landing page ${NC}" ${REPORTDIR}/pages/indiv.landing.${SUBJECT}.html 		
 		check-recons_html.init.landing ${REPORTDIR}/pages/indiv.landing.${SUBJECT}.html "${TILES}"
 	done	
 
 
 }
 function check-recons_html.init.tile(){
-	local tile="${1}" && local outfile=${2} && local subject=${3} && local images=""
+	local tile="${1}" && local outfile=${2} && local subject=(${3}) && local images=""
 	if [ "${tile}" = 'atlas' ]; then
-		check-recons_convert.NIFTI
+		check-recons_convert.NIFTI "${subject[@]}"
 		searchfor='T1 brainmask wm aseg aparc+aseg aparc.DKTatlas+aseg aparc.a2009s+aseg wmparc'
 		found=""
 		for search in ${searchfor}; do
-			found+="$(find ${SUBJECTS_DIR}/${subject} \( ! -regex '.*/\..*' \)  -name "${search}.nii.gz") "
+			found+="$(find ${SUBJECTS_DIR}/${subject[@]} \( ! -regex '.*/\..*' \)  -name "${search}.nii.gz") "
 		done
-		check-recons_html.papaya "${subject}" "${found}" 
-		check-recons_html.init.tile.papaya "$(echo ${searchfor} | sed 's|+|_|g' | sed 's|\.|_|g')" "${outfile}" ${subject}
+		check-recons_html.papaya "${subject[@]}" "${found}" 
+		check-recons_html.init.tile.papaya "$(echo ${searchfor} | sed 's|+|_|g' | sed 's|\.|_|g')" "${outfile}" "${subject[@]}"
 	# elif [ $(echo "${tile}" | grep 'surface') ]; then
 	# 	echo check-recons_html.init.tile.surface
 	# elif [ "${tile}" = 'edits' ]; then
@@ -2490,7 +2496,7 @@ function check-recons(){
 	# get location of program
 	check-recons_whereami	
 	# convert files if user asks
-	[ "${CONVERTFILES}" ] && check-recons_convert.NIFTI
+	[ "${CONVERTFILES}" ] && check-recons_convert.NIFTI ${SUBJECTS}
 	[ "${DEFACEFILES}" ] && check-recons_deface
 	# kill SGE jobs, delete isRunning files
 	## TODO - add ability to kill by pid (need intelligent ps aux matching)
