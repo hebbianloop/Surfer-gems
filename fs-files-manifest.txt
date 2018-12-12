@@ -191,7 +191,5 @@ talairach_with_skull.lta
 wm.asegedit.mgz
 wm.mgz
 wm.seg.mgz
-wm1.txt
-wm255.txt
 wmparc.mgz
 wmparc.stats

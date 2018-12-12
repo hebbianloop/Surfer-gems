@@ -18,33 +18,55 @@ SECONDS=0
 function check-recons_usage(){
 	check-recons_defaults
 read -r -d '' HELPMESSAGE <<EOF
+
+Usage :: ${0##*/} 
+-s|--subjects LIST -sd|--subjects_dir DIR --status active|done|failed -f|--files --stats --deface BASENAME --convert --kill-jobs PATTERN --web-report active|done|failed --web-report-dir|-wrd DIR --no-colors|--plain|-nc -v| --verbose --usage|usage -h|--help|help|?|
+\n
+EOF
+if [ ${HELP} = 'more' ]; then
+read -r -d '' HELPMESSAGE <<EOF
 \n\033[33;5m✨\033[0m${BLUE}The Magical Surfer-gem Box${BLUE}\033[33;5m✨\033[0m\n\n
 
-${GREY}This program contains a bounty of gems for working with FreeSurfer Datasets.${NC}
+This program contains a bounty of gems for working with FreeSurfer Datasets.
 
 \n\n ${BBLUE}■ ${GREY}Summarizing Jobs${NC}
-\n\n\t ${GREY}Checking a single subject${NC}
+\n\n\t ${GREY}checking a single subject${NC}
 \n\t >> ${0##*/} -s SUBJECTID 
-\n\n\t ${GREY}Also works for lists${NC}
-\n\t >> ${0##*/} -s "SUBJECT-1 SUBJECT-2 SUBJECT-3"
-\n\n\t ${GREY}Get more information${NC}
-\n\t >> ${0##*/} -s "SUBJECT-1 SUBJECT-2 SUBJECT-3" -v
-\n\n\t ${GREY}Summarize all data in SUBJECTS_DIR${NC}
+\n\n\t ${GREY}also works for lists${NC}
+\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3
+\n\n\t ${GREY}get more information${NC}
+\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3 -v
+\n\n\t ${GREY}summarize all data in SUBJECTS_DIR${NC}
 \n\t >> ${0##*/} --status
-\n\n\t ${GREY}Check only failed${NC}
+\n\n\t ${GREY}check only failed${NC}
 \n\t >> ${0##*/} --status failed
-\n\n\t ${GREY}Check only currently running jobs${NC}
+\n\n\t ${GREY}check only currently running jobs${NC}
 \n\t >> ${0##*/} --status active
-\n\n\t ${GREY}Check only completed jobs${NC}
+\n\n\t ${GREY}check only completed jobs${NC}
 \n\t >> ${0##*/} --status done
-\n\n\t ${GREY}Check only completed and failed jobs${NC}
+\n\n\t ${GREY}check only completed and failed jobs${NC}
 \n\t >> ${0##*/} --status failed --status done
-\n\n\t${GREY} ℹ️ You can always add${NC} -v${GREY} for more information${NC}
+\n\n\t ${GREY}find which subjects in a list are completed${NC}
+\n\t >> ${0##*/} --status done -s SUBJECT-1 SUBJECT-2 SUBJECT-3
+\n\n\t${GREY} ℹ️   You can always add${NC} -v${GREY} for more information${NC}
 
-\n\n ${BBLUE}■ ${GREY}Check whether SUBJECT has completed file manifest${NC}
-\n\t >> ${0##*/} -s SUBJECTID -f
-\n\n\t ${GREY}print more information about which files are missing with${NC} -v
+\n\n ${BBLUE}■ ${GREY}Check Data for Complete File Manifest${NC}
+\n\n\t ${GREY}check all subjects in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} -f
+\n\n\t ${GREY}print details about which files are missing for a specific subject ${NC}
 \n\t >> ${0##*/} -s SUBJECTID -f -v 
+
+\n\n ${BBLUE}■ ${GREY}Convert MGZs into NII.GZ${NC}
+\n\t >> ${0##*/} -s SUBJECTID --convert
+\n\n\t ${GREY}leave off the SUBJECTID to convert all subjects in SUBJECTS_DIR${NC} -v
+\n\t >> ${0##*/} --convert
+
+\n\n ${BBLUE}■ ${GREY}Deface Identifying Images for all in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} --deface
+\n\n\t ${GREY}or just deface a specific subject${NC}
+\n\t >> ${0##*/} -s SUBJECTID --deface
+\n\n\t ${GREY}specify the basename of volumes to deface${NC}
+\n\t >> ${0##*/} -s SUBJECTID --deface 001 --deface T1
 
 \n\n ${BBLUE}■ ${GREY}Getting Help${NC}
 \n\t >> ${0##*/}
@@ -58,7 +80,8 @@ ${GREY}This program contains a bounty of gems for working with FreeSurfer Datase
 \n\t >> ${0##*/} -s SUBJECTID -nc
 
 EOF
-echo -e ${HELPMESSAGE} | fold -w 120 -s # print and wrap
+fi
+echo -e ${HELPMESSAGE} | fold -w 130 -s # print and wrap
 }
 ### DEFINE FUNCTION
 ## figure out where function is being called from (follow symlinks)
@@ -84,7 +107,7 @@ function check-recons_defaults(){
 	## Arrays 
 	[ ! ${STATUS} ] && STATUS=()								# init STATUS if it doesn't exist 
 	#  pre-allocate variables here to fill later
-	[ ! "${SUBJECTS}" ] && echo -e "...checking SUBJECTS_DIR: ${SUBJECTS_DIR}" && SUBJECTS=$(ls ${SUBJECTS_DIR}/*/scripts/recon-all.log | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}')
+	[ ! "${SUBJECTS}" ] && [ ! ${HELP} ] && echo -e "...checking SUBJECTS_DIR: ${SUBJECTS_DIR}" && SUBJECTS=($(ls ${SUBJECTS_DIR}/*/scripts/recon-all.log | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}'))
 	[ ! "${RECONSTATS}" ] && RECONSTATS=() 												# array of status outputs across subjects
 	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
 	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
@@ -127,7 +150,7 @@ function check-recons_defaults(){
 	## Files for Webreports
 	SURFs='lh.pial lh.white rh.pial rh.white'
 	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'
-	#DEFACEFILES='T1'
+	# [ ! "${DEFACEFILES}" ] && DEFACEFILES='orig T1 001'
 }
 ################################################################################################################
 ################################################################################################################
@@ -171,6 +194,10 @@ function check-recons_files(){
 			RERUNSUB+=("${SUBJECT}")
 			# report manifest
 			echo -e "${status} - ${NUMSUBFILES} / ${NUMFILES} manifest files found${NC}"
+		else
+			echo -e "${status}  ${GREEN}✔ all files (ok)${NC}"
+			COMPLETESUB+=("${SUBJECT}")
+		fi
 			if [ ${VERBOSE} ]; then
 				## missing volumes
 				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
@@ -217,11 +244,7 @@ function check-recons_files(){
 				## present log
 				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
 				echo -e ""
-			fi
-		else
-			echo -e "${status}  ${GREEN}✔ all files (ok)${NC}"
-			COMPLETESUB+=("${SUBJECT}")
-		fi
+			fi		
 		#check-subject ${SUBJECT}
 	done
 }
@@ -236,7 +259,7 @@ function check-recons_status(){
 	# Find all subjects with IsRunning file, get current status, time and host
 	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
-	        for SUBJECT in ${SUBJECTS}; do
+	    for SUBJECT in ${SUBJECTS[@]}; do
 		    RUNNINGSUBJECTS+=($(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
 		done
 		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
@@ -249,7 +272,7 @@ function check-recons_status(){
 	# Find all subjects with recon-all.log file and list those with finished message at end of log
 	if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
 		RECONS=""
-		for SUBJECT in ${SUBJECTS}; do
+		for SUBJECT in ${SUBJECTS[@]}; do
 		    RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "
 		done
 		# echo -e '\n\r'
@@ -267,7 +290,7 @@ function check-recons_status(){
 	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
 		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
 		RECONS=""
-		for SUBJECT in ${SUBJECTS}; do
+		for SUBJECT in ${SUBJECTS[@]}; do
 			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "			
 		done
 		# [ ! "${RECONS}" ] && 
@@ -335,6 +358,9 @@ function check-recons_stats(){
 	[ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ] && check-recons_status
 	[ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
 	[ ! "${SUBJECTS}" ] && check-recons_status && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
+	# Summarize edits for all subjects
+	check-recons_subject-edits
+	# Start loop across subjects
 	counter=0 && status=()
 	for SUBJECT in ${SUBJECTS[@]}; do
 		printf "\r%s💤  %d/%d -- Analyzing Reconstruction Stats" "$(tput el)" $((counter + 1)) ${#SUBJECTS[*]}
@@ -370,7 +396,7 @@ function check-recons_stats(){
 		# get last reported recon status
 		reconstatus+=("$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')") 
 		# Count up the number of brainmask edits
-		printf "\r%s✏️  📊  %d/%d -- Compiling Edits" "$(tput el)" $counter ${#SUBJECTS[*]} && check-recons_subject-edits ${SUBJECT}
+		# printf "\r%s✏️  📊  %d/%d -- Compiling Edits" "$(tput el)" $counter ${#SUBJECTS[*]} && check-recons_subject-edits ${SUBJECT}
 		bmedits+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}'))
 		wmerased+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}'))
 		wmfilled+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}'))		
@@ -432,19 +458,6 @@ function check-recons_subject-cnr(){
 echo ''
 }
 ### DEFINE FUNCTION
-# summarize subject edits
-function check-recons_subject-edits(){
-	# ${FREESURFER_HOME}/recon-all -s ${1} -show-edits > ${SUBJECTS_DIR}'/'${1}'/manual-edits-report.txt'
-	${FREESURFER_HOME}/bin/bmedits2surf --s ${1} > /dev/null
-	${FREESURFER_HOME}/bin/wmedits2surf --s ${1} > /dev/null
-	local bmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}')
-	local wmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}')
-	local wmfill=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}')
-	[ ${VERBOSE} ] && printf '\n\t# Erased voxels in brainmask: %d\n' ${bmerase}
-	[ ${VERBOSE} ] && printf '\t# Erased voxels in white matter mask: %d\n' ${wmerase}
-	[ ${VERBOSE} ] && printf '\t# Filled voxels in white matter mask: %d\n' ${wmfill}
-}
-### DEFINE FUNCTION
 function check-recons_subject-status(){
 	# get last reported recon status
 	echo "$(tail -n 5 ${SUBJECTS_DIR}/${1}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')"
@@ -454,7 +467,7 @@ function check-recons_subject-status(){
 ################################################################################################################
 ################################################################################################################
 ################################################################################################################
-######### PRINTING TO STDOUT & FILE
+######### PRINTING TO STDOUT
 #########
 #########
 ################################################################################################################
@@ -471,7 +484,7 @@ function check-recons_printstatus_verbose(){
 		fi	
 	fi
 	if [ "${FINISHEDSUBJECTS[*]}" ]; then
-		echo 'Completed Job Status Details ::'		
+		echo -e '\n\nCompleted Job Status Details ::'		
 		if [ ${VERBOSE} ]; then
 			for SUBJECT in ${FINISHEDSUBJECTS[@]}; do
 				echo -e "\n${BLUE}${SUBJECT}\n${GREEN}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'recon-all-status.log'))${GGREY}\n$(tail -n 4 $(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'recon-all.log')| head -n 5 )${NC}\n"
@@ -517,7 +530,8 @@ function check-recons_printstatus(){
 			((counter++))
 		done
 		status=$(echo -e ${status} | sort -k1 -r)
-		[ ${FILECHECK} ] && local string=tDATASET-MANIFEST
+		# print DATASET MANIFEST to status
+		[ ${FILECHECK} ] && local string=DATASET-MANIFEST
 		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}COMPLETION-TIME\t${GGREY}TIME-ELAPSED\t${string}\n")
 		echo -e "\n✅ ${GREEN}${#FINISHEDSUBJECTS[@]} Completed Jobs :: ${NC}\n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
@@ -537,6 +551,13 @@ function check-recons_printstatus(){
 	[ "$(echo "${RERUNSUB[@]}")" ] && echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC}" && printf "${FREESURFER_HOME}/recon-all -s %s -make all\n" ${RERUNSUB[@]}
 	[ "$(echo "${COMPLETESUB[@]}")" ] && echo -e "\n${GREEN}Complete file manifests (ready for analysis):${NC}" && printf "${BLUE}%s${NC} " ${COMPLETESUB[@]}
 }
+################################################################################################################
+################################################################################################################
+################################################################################################################
+######### PRINTING TO FILE
+#########
+#########
+################################################################################################################
 ## DEFINE FUNCTION
 ### Print stats to table
 function check-recons_table(){
@@ -556,30 +577,82 @@ function check-recons_table(){
 ## DEFINE FUNCTION
 ### Convert file into NIFTI
 function check-recons_convert.NIFTI(){
-	SUBJECTS=${1}
+	local files=${1}
+	local iext=${2}
+	local oext=${3}
 	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	echo -e '\nConverting...'
-	printf '\t%s\n' $(echo ${SUBJECTS[@]})
-	echo -e '\nFiles Queued for Conversion...'
-	printf '\t%s.nii.gz\n' $(echo ${MGZs} ${SURFs})
-	echo ''	
+	echo -e '\nConverting Subject(s)...' && printf '\t👤 %s\n' $(echo ${SUBJECTS[@]}) && echo -e '\nVolumes Queued for Conversion to NII.GZ...' && printf '\t🧠  %s\n' $(echo ${files}) && echo ''
+	local counter=0
+	for SUBJECT in ${SUBJECTS[@]}; do
+		printf "\r%s💤  %d/%d -- Converting ${SUBJECT}..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
+		found=""
+		for search in ${files}; do
+			found+="$(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \)  -name "${search}.${iext}") "
+		done
+		## current working point			
+		exit
+		parallel -k --link mri_convert {1} 2&>1 /dev/null ::: $(echo "${found}")
+		((counter++))
+	done	
+}
+## DEFINE FUNCTION
+### Convert file into GIFTI
+function check-recons_convert.GIFTI(){
+	local files=${1}
+	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
+	echo -e '\nConverting Subject(s)...' && printf '\t👤 %s\n' $(echo ${SUBJECTS[@]}) && echo -e '\nSurfaces Queued for Conversion to GII...' && printf '\t🏄‍♂️ %s\n' $(echo ${files}) && echo ''	
 	# [ ! "${EXISTS}" ] && check-recons_files
-	# echo -e '\nRequired Image/Surface Files for Web Report'
 	counter=0
 	for SUBJECT in ${SUBJECTS[@]}; do
-			printf "\r%s💤  %d/%d -- Converting..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[*]}
-			parallel -k --link mri_convert --out_type nii ${SUBJECTS_DIR}/${SUBJECT}/mri/{}.mgz  ${SUBJECTS_DIR}/${SUBJECT}/mri/{}.nii.gz 2&>1 /dev/null ::: $(echo "${MGZs}")
-			parallel -k --link mris_convert ${SUBJECTS_DIR}/${SUBJECT}/surf/{} ${SUBJECTS_DIR}/${SUBJECT}/surf/{}.gii 2&>1 /dev/null  ::: $(echo "${SURFs}")
+			printf "\r%s💤  %d/%d -- Converting ${SUBJECT}..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
+			parallel -k --link mris_convert ${SUBJECTS_DIR}/${SUBJECT}/surf/{} ${SUBJECTS_DIR}/${SUBJECT}/surf/{}.gii  2&>1 /dev/null ::: $(echo "${SURFs}")
 			((counter++))
 	done	
 }
 ## DEFINE FUNCTION
 ### Deface files
 function check-recons_deface(){
-	for defacefile in ${DEFACEFILES}; do
-		parallel -k --link --bar mri_deface {} ${SOURCEPATH}/talairach_mixed_with_skull.gca ${SOURCEPATH}/face.gca {} ::: $(find ${SUBJECTS_DIR}  -name ${defacefile}'.mgz')
+	echo -e '\nAnonymizing Subject(s)...'
+	printf '\t👤 %s\n' $(echo ${SUBJECTS[@]})	
+	echo -e '\nImages to be Anonymized...'
+	printf '\t🧠 %s\n' $(echo ${DEFACEFILES[@]})
+	counter=0
+	for SUBJECT in ${SUBJECTS[@]}; do
+		for defacefile in ${DEFACEFILES[@]}; do
+			printf "\r%s💤  %d/%d -- Anonymizing ${SUBJECT} ${defacefile}.mgz ..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
+			parallel -k --link --bar mri_deface {} ${SOURCEPATH}/talairach_mixed_with_skull.gca ${SOURCEPATH}/face.gca {} 2&>1 /dev/null ::: $(find ${SUBJECTS_DIR}/${SUBJECT}  -name ${defacefile}'.mgz')
+		done
+		((counter++))
 	done
+	echo -e '\nDefacing of Images done!'
 }
+### DEFINE FUNCTION
+# summarize subject edits
+function check-recons_subject-edits(){
+	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
+	echo -e '\n Summarizing Edits for Subject(s)...'
+	printf '\t👤 %s\n' $(echo ${SUBJECTS[@]})
+	# [ ! "${EXISTS}" ] && check-recons_files
+	# echo -e '\nRequired Image/Surface Files for Web Report'
+	counter=0
+	for SUBJECT in ${SUBJECTS[@]}; do
+		printf "\r%s✏️  📊  %d/%d -- Compiling ${SUBJECT} Edits" "$(tput el)" ${counter} ${#SUBJECTS[@]}
+		# ${FREESURFER_HOME}/recon-all -s ${1} -show-edits > ${SUBJECTS_DIR}'/'${1}'/manual-edits-report.txt'
+		${FREESURFER_HOME}/bin/bmedits2surf --self --tmp ${SUBJECTS_DIR}/${SUBJECT}/qc --s ${SUBJECT} > /dev/null
+		${FREESURFER_HOME}/bin/wmedits2surf --self --tmp ${SUBJECTS_DIR}/${SUBJECT}/qc --s ${SUBJECT} > /dev/null
+		if [ ${VERBOSE} ]; then
+			bmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}')
+			wmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}')
+			wmfill=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}')
+			printf '\n\t# Erased voxels in brainmask: %d\n' ${bmerase}
+			printf '\t# Erased voxels in white matter mask: %d\n' ${wmerase}
+			printf '\t# Filled voxels in white matter mask: %d\n' ${wmfill}
+		fi
+		((counter++))
+	done		
+}
+### DEFINE FUNCTION
+# screenshot subject edits
 ################################################################################################################
 ################################################################################################################
 
@@ -697,7 +770,8 @@ function check-recons_html.init(){
 function check-recons_html.init.tile(){
 	local tile="${1}" && local outfile=${2} && local subject=(${3}) && local images=""
 	if [ "${tile}" = 'atlas' ]; then
-		check-recons_convert.NIFTI "${subject[@]}"
+		# TODO :: remove this from here and convert as a batch before creating tile, then remove input
+		check-recons_convert.NIFTI "${subject}" 
 		searchfor='T1 brainmask wm aseg aparc+aseg aparc.DKTatlas+aseg aparc.a2009s+aseg wmparc'
 		found=""
 		for search in ${searchfor}; do
@@ -709,8 +783,8 @@ function check-recons_html.init.tile(){
 	# 	echo check-recons_html.init.tile.surface
 	# elif [ "${tile}" = 'edits' ]; then
 	# 	echo ''
-	# elif [ "${tile}" = 'contrast-to-noise' ]; then
-	# 	echo ''
+	elif [ "${tile}" = 'contrast-to-noise' ]; then
+	 	echo ''
 	# else
 	# 	echo ''
 	fi
@@ -2355,10 +2429,9 @@ function check-recons_parseopts(){
 		check-recons_usage
 		exit
 	fi
-	# if [ ! "$(echo $@ | grep '\help\|-h\|\?\|usage')" ]; then
-	# 	echo 'Reading Defaults'
-	# 	check-recons_defaults
-	# fi
+	if [ "$(echo $@ | grep '\help\|-h\|\?\|usage')" ]; then
+		HELP='heychillabit'
+	fi
 	check-recons_defaults
 	# Parse Options
 	while :; do
@@ -2366,18 +2439,66 @@ function check-recons_parseopts(){
 	    -f|--files)
 			FILECHECK='checkemall'
 		    ;;	    	
-		--convert)
-			CONVERTFILES='convertintoNIFTI'
+		--convert-vol)
+			CONVERTVOL='yes'
+		    if [ -n "$2" ]; then
+				if [ "$(echo "$2" | grep '^-')" ]; then
+					CONVERTVOLFILES='orig T1 001'	
+				else
+					CONVERTVOLFILES+=("${2}")
+					shift
+				fi		    	
+			else
+				CONVERTVOLFILES='orig T1 001'
+		    fi			
+			;;
+		--convert-surf)
+			CONVERTSURF='yes'
+		    if [ -n "$2" ]; then
+				if [ "$(echo "$2" | grep '^-')" ]; then
+					CONVERTSURFFILES='lh.pial lh.white rh.pial rh.white'	
+				else
+					CONVERTSURFFILES+=("${2}")
+					shift
+				fi		    	
+			else
+				CONVERTSURFFILES='lh.pial lh.white rh.pial rh.white'
+		    fi			
+			;;			
+		--in_type)
+		    if [ -n "$2" ]; then
+				IEXT="${2}"
+				shift
+			else
+				echo -e "${BRED}ERROR: ${NC}--in_type requires a non empty option argument.\n" >&2
+				exit				
+		    fi		
+			;;
+		--out_type)			
+		    if [ -n "$2" ]; then
+				OEXT="${2}"
+				shift
+			else
+				echo -e "${BRED}ERROR: ${NC}--out_type requires a non empty option argument.\n" >&2
+				exit				
+		    fi		
 			;;
 		--deface)
 			DEFACE='defacefiles'
 		    if [ -n "$2" ]; then
-				DEFACEFILES+=("${2}")
-				shift
+				if [ "$(echo "$2" | grep '^-')" ]; then
+					DEFACEFILES='orig T1 001'	
+				else
+					DEFACEFILES+=("${2}")
+					shift
+				fi		    	
 			else
 				DEFACEFILES='orig T1 001'
 		    fi			
-			;;			
+			;;
+		--edits-summary)
+			SUMMARYEDITS='summarizetheedits'
+			;;						
 	    --stats)
 			RECONSTATS='getdetails'
 		    ;;					    						    	
@@ -2396,7 +2517,7 @@ function check-recons_parseopts(){
 		    ;;
 		--web-report)
 		    if [ -n "$2" ]; then
-				STATUS+=("${2}")
+				STATUS+=("${2}") #TEST THIS
 				shift
 		    fi
 			HTMLREPORT='makereport'
@@ -2410,7 +2531,7 @@ function check-recons_parseopts(){
 				exit				
 		    fi
 			;;					    
-		-sd|--subjects-dir)
+		-sd|--subjects_dir)
 		    if [ -n "$2" ]; then
 				SUBJECTS_DIR=${2}
 				shift
@@ -2420,38 +2541,53 @@ function check-recons_parseopts(){
 		    fi
 		    ;;
 		-s|--subjects)
-		    if [ -n "$2" ]; then
-				SUBJECTS=${2}
-				STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+			if [ $# -gt 1 ]; then
 				shift
-		    else
-				echo -e "${BRED}ERROR: ${NC}-s --subjects requires a non empty option argument.\n" >&2
-				exit
-		    fi
+				SUBJECTS=($(comm -12 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $@)))
+				local NOMATCH=$(comm -13 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $(printf '%s\n' $@ | sed -E 's|^-.*||g')))
+				if [ ! "${SUBJECTS}" ] || [ "${NOMATCH}" ]; then
+					echo -e "\n${YELLOW} ⚠️  WARNING: ${NC}Subject $(printf '"%s" ' ${NOMATCH})not found in ${SUBJECTS_DIR}"
+					[ ${#SUBJECTS[@]} -lt 1 ] && exit
+				fi				
+			else
+				echo -e "${BRED}\nERROR: ${NC}-s --subjects requires a non empty option argument." >&2
+				exit				
+			fi
+			#STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 		    ;;		    			
 	    --status)
 		    if [ -n "$2" ]; then
-		    	if [ "$2" = 'active' ]; then
-		    		STATUS+=("${GREY}${2}${NC}")
-		    	elif [ "$2" = 'done' ]; then
-		    		STATUS+=("${GREEN}${2}${NC}")
-		    	elif [ "$2" = 'failed' ]; then
-		    		STATUS+=("${YELLOW}${2}${NC}")
-		    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
+		    	if [ "$(echo "$2" | grep '^-')" ]; then
 		    		STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 		    	else
-		    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
-		    	fi
-				shift
+			    	if [ "$2" = 'active' ]; then
+			    		STATUS+=("${GREY}${2}${NC}")
+			    	elif [ "$2" = 'done' ]; then
+			    		STATUS+=("${GREEN}${2}${NC}")
+			    	elif [ "$2" = 'failed' ]; then
+			    		STATUS+=("${YELLOW}${2}${NC}")
+			    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
+			    		STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+			    	else
+			    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
+			    	fi
+					shift
+				fi
 			else
-				STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+				[ ! ${STATUS} ] && STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 		    fi
 		    ;;		    				    		    	    		    					
-		-h|--help|help|?|--usage|usage)
+		?|--usage|usage)
+			HELP='help'
 			check-recons_usage
 			exit
 			;;
-		?*)
+		-h|--help|help)
+			HELP='more'
+			check-recons_usage
+			exit
+			;;			
+		?)
 		    printf '\n'${YELLOW}' Warning: '${NC}'Unknown option: "%s"\n..exiting' "${1}" >&2
 		    exit
 		    ;;
@@ -2497,8 +2633,10 @@ function check-recons(){
 	# get location of program
 	check-recons_whereami	
 	# convert files if user asks
-	[ "${CONVERTFILES}" ] && check-recons_convert.NIFTI ${SUBJECTS}
+	[ "${CONVERTVOL}" ] && check-recons_convert.NIFTI ${CONVERTVOLFILES} ${IEXT} ${OEXT}
+	[ "${CONVERTSURF}" ] && check-recons_convert.NIFTI ${CONVERTSURFFILES}
 	[ "${DEFACEFILES}" ] && check-recons_deface
+	[ "${SUMMARYEDITS}" ] && check-recons_subject-edits
 	# kill SGE jobs, delete isRunning files
 	## TODO - add ability to kill by pid (need intelligent ps aux matching)
 	[ "${KILLJOBS}" ] && check-recons_killJobs

@@ -219,7 +219,7 @@ if [ "${surf}" ]; then
     # Check if white matter surface is set
     [ "${wms}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue "
     # Check if white matter surface is set
-	[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
+	#[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
 fi
 # Run FreeView with set options
 freeview ${optionstring} &
