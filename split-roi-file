@@ -108,20 +108,11 @@ if [ ${extension} = 'nii' ]; then
 fi
 # Convert .MGZ into NIFTI.GZ
 if [ ${extension} = 'mgz' ]; then
-	echo 'Converting .MGZ to Compressed NIFTI:: Saving in --> ${savedir}/tmp/${baseimagename}.nii.gz'
+	echo "Converting .MGZ to Compressed NIFTI:: Saving in --> ${savedir}/tmp/${baseimagename}.nii.gz"
 	mri_convert -it mgz -ot nii ${image} ${savedir}/tmp/${baseimagename}.nii.gz
-	# Redefine image as the converted version
-	[ -f "${savedir}/tmp/${baseimagename}.nii.gz" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
-	[ ! -f "${savedir}/tmp/${baseimagename}.nii.gz" ] && echo 'ERROR ::: Conversion of ROI file from .MGZ to .NII.GZ Failed ... exiting' && exit
-	# Redefine other parameters
-	filename=$(basename "$image")
-	extension="${filename#*.}"
-	baseimagename=$(echo ${filename} | sed 's/'.${extension}'//')
-	echo ----
-	echo $filename
-	echo $extension
-	echo $baseimagename
-	exit
+	# Redefine parameters 
+	extension='nii.gz'
+	image="${savedir}/tmp/${baseimagename}.${extension}"	
 fi	
 
 ## Otherwise check if any other image format
@@ -134,15 +125,8 @@ fi
 
 # Copy original image file for calculations
 [ ! -f ${savedir}/tmp/${baseimagename}.${extension} ] && fslmaths ${image} ${savedir}/tmp/${baseimagename}.${extension}
-
-# Redefine image as the copied version
-#[ -f "${savedir}/tmp/${baseimagename}.${extension}" ] && image="${savedir}/tmp/${baseimagename}.${extension}"
-image="${savedir}/tmp/${baseimagename}.${extension}"
-#[ ! -f "${savedir}/tmp/${baseimagename}.${extension}" ] && echo "ERROR ::: Copy of ROI file Failed.. Cannot find ${savedir}/tmp/${baseimagename}.${extension} ... exiting" && exit
-
 # Get Maximum Range (trim trailing zeros)
 numrois=$(fslstats $image -R | awk '{print $2}' | awk -F . '{print $1}')
-
 counter=0
 # TODO :: Add method for extracting specific target roi
 while [[ $counter != $numrois ]]; do
