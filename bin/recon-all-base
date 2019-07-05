@@ -1,0 +1,273 @@
+#!/bin/sh
+# Create the base unbiased template for each timepoint available per subject
+#  -- Run this code ONLY after all subjects in the longitudinal analysis folder have been tagged for analysis
+#       --> in other words:  first remove all subjects from the longitudinal folder that you don't want to include
+#  -- Implements lockfile method that allows multiple instances to process different subjects in parallel
+#  -- Checks completed subjects list in SUBJECTS_DIR to only run unprocessed subbjects
+#
+
+# ------------------------------------------------------------------------------------------------------------
+# Default Arguments
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+binpth="$usrpth/bin/"
+cd $usrpth
+d=$(date)
+
+s=$(date -u "+%s")                              # time the script
+
+projdir="$usrpth/Projects/ADS/data"  
+subdir='ads.subjects.test'
+subsfile='base'
+tempID='-base'
+
+## Enable advanced pattern matching
+shopt -s extglob
+# ------------------------------------------------------------------------------------------------------------
+# Help Function
+show_help() {
+    cat <<EOF
+    Usage ${0##*/} [-h|--help] [-pd|--projectdir PATH] [-sd|--subjectdir PATH] [-rd--rawdatadir PATH] ...
+                                                      [-s|--subjlist FILE] [-tid|--templateID STRING] ...
+    
+    Runs recon-all for a batch of subjects. Supports grouping of subjects for different treatments or time points.
+    Implements a lockfile method to allow multiple invokations (i.e. running this script in parallel).
+
+    Options :: 
+    -h  --help           displays help
+    -pd --projectdir     local path to where the subjects directory will live in
+    -sd --subjectdir     output will go here, constructed as a subdirectory in projectdir
+    -s  --subjlist       name of subject list to run reconstruction on
+    -tid --templateID    name of base template (appended to subject name)
+
+    Example :: 
+
+        The following call assumes the existence of a project directory: /Volumes/CFMI/FreeSurfer/data.
+            This directory is further assumed to contain:
+                                                            ./ads.subjects
+                                                            ./ads.subjects/long.list
+
+            recon-all-base -pd /Volumes/CFMI/FreeSurfer/data -sd ads.subjects -tid -base -s long
+
+    Default behavior ::  
+
+
+EOF
+}
+# ------------------------------------------------------------------------------------------------------------
+# Option Parsing
+while :; do
+    case $1 in
+        -h|--help)
+        show_help
+        exit 
+        ;;
+        -pd|--projectdir)
+            if [ -n "$2" ]; then
+                projdir=$2
+                shift
+            else
+                echo "ERROR:  -pd --projectdir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -sd|--subjectdir)
+            if [ -n "$2" ]; then
+                subdir=$2
+                shift
+            else
+                echo "ERROR:  -sd --subjectdir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -tid|--templateID)
+            if [ -n "$2" ]; then
+                rawdatadir=$2
+                shift
+            else
+                echo "ERROR:  -rd --rawdatadir requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;                          
+        -s|--subjlist)
+            if [ -n "$2" ]; then
+                subjlist=$2
+                shift
+            else
+                echo "ERROR:  -s --subjlist requires a non-empty option argument.\n" >&2
+                exit 
+            fi
+            ;;
+        -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+# ------------------------------------------------------------------------------------------------------------
+# Update default arguments
+subdir=$projdir/$subdir
+subsfilename=$subsfile'.list'
+subsfile=$subdir/$subsfilename
+# ------------------------------------------------------------------------------------------------------------
+# Output variables to terminal
+cfmi-splash
+cat <<EOF
+--------------------------------------------------------------------------------------------------------------
+
+recon-all-base was invoked by  :   $me   on   $d   with the following options:
+
+
+PROJECT DIRECTORY                   =  $projdir
+SUBJECT DIRECTORY                   =  $subdir
+SUBJECT LIST FILE                   =  $subsfile
+TEMPLATE ID                         =  $tempID
+
+ *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+ *  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+
+EOF
+# ------------------------------------------------------------------------------------------------------------
+# Check all of the inputs
+if [ ! -d $projdir ]; then
+    echo "ERROR! Path to Project Directory Could Not Be Found"
+    exit 
+elif [ ! -d $subdir ]; then
+    echo "ERROR! Path to Subject Directory Could Not Be Found"
+    exit 
+elif [ ! $subdir = $SUBJECTS_DIR ]; then
+    echo "Subjects Directory does not match Freesurfer \$SUBJECTS_DIR: $SUBJECTS_DIR"
+    echo " ....setting \$SUBJECTS_DIR to specified subject directory"
+    SUBJECTS_DIR=$subdir
+fi
+# ------------------------------------------------------------------------------------------------------------
+# Move to Subjects Directory to Make Pattern Matching Easier
+cd $subdir
+# ------------------------------------------------------------------------------------------------------------
+# Check if Subjects File Exists & Retrieve List of Subjects
+#   * * * since we are reading across both wave one and wave two subjects and have many other files 
+#          in the subjects directory, we turn on advanced pattern matching and use the ls command
+#          to only get the subject names.  Then we replace the grouping flags with an empty string
+#          , sort and get the unique list of subjects in the subjects directory. Cool Stuff!
+if [ -f $subsfile ]; then
+    subs=$(cat $subsfile)
+    echo -e '\nThe following Subjects will be processed for longitudinal analysis:  '
+    echo ' . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .'
+    printf '\n\t%s' $subs
+else
+    # Get List of All Subjects
+    list=$(ls -d !(*average|*.list|*.table|*-base))
+    # Replace flags to just get IDs, sort the IDs, then output unique IDs to subject list file for this analysis
+    rep=''
+    grep -o '^[^-]\+' <<< "$list" | sort | uniq > $subsfile
+    # Lastly define your subject list
+    subs=$(cat $subsfile)
+    echo 'The following Subjects will will be processed for longitudinal analysis:  '
+    echo ' . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .'
+    printf '\n\t%s' $subs
+fi
+cat <<EOF
+
+*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+*  *  *  *  *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  *   *  *  *  * 
+EOF
+# Create completed subjects list for the base run
+completedsubsfile=$subdir/'completed_subjects.recon-all.'$subsfilename
+if [ ! -f $completedsubsfile ]; then
+    echo -e '\n\n* * *\n\n recon-all-base has not yet been run with this list of subjects\n\n* * *\n'
+    echo "Initializing Completed Subjects List: $completedsubsfile"    
+    touch $completedsubsfile
+else
+    echo -e '\n\n!!! recon-all-base has been previously run on this subject list\n\n'
+    echo "LIST OF COMPLETED SUBJECTS: $completedsubsfile\n"
+    cat $completedsubsfile    
+fi
+# Loop across subjects and create recon-all -long command with appropriate time points for each subject
+for k in $subs
+    do
+    # Make sure subject hasn't  been run already
+    checksub=$(awk /$k/ $completedsubsfile | cut -f 1 -d' ')
+    if [ -z $checksub ]; then
+        echo '** Subject has not completed recon-all-base stream'
+        # Check if subject is already running
+        LOCK=$subdir'/.'$k'.recon-all-base.lock'
+        if [ -f $LOCK ];then
+            echo -e '! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !'
+            echo -e $k 'is already running, skipping to next subject'
+            echo -e '! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !\n'
+        else
+            echo -e '** Beginning unique run for ' $k'\n'
+            echo -e '* \tLocking File: ' $LOCK
+            # Make a lock file
+            touch $LOCK
+            echo -e '\n\t* Creating Unbiased template for subject:  ' $k
+            ts=$(ls -d $k!(*base))        # Check to see if more than one time point exists
+            echo -e '\n\t\tThe following timepoints were found: ' $ts '\n'
+            # Build string for recon-all with time points for subject
+            reconstr=''
+            for t in $ts
+            do
+                reconstr=$reconstr'-tp '$t' '
+            done
+            #print command for debugging
+            echo -e '*** \t* Running command: recon-all -base '$k$tempID' '$reconstr' -all\n\n'
+            #begin timer
+            START=$(date -u "+%s")
+            #run recon-all -base
+            recon-all -base $k$tempID $reconstr -all
+            END=$(date -u "+%s")
+            DIFF=$((END-START))
+            #When did each subject finish and how long did it take?
+            echo $k $(date) "$(($DIFF / 3600)) hours $(($DIFF %3600 / 60)) minutes and $(($DIFF % 60)) seconds elapsed." $me >> $completedsubsfile
+            #Let user know
+            echo 'Finished Subject' $k "- - - - $(($DIFF / 120)) hours"
+            echo -e 'Removing Lock\n'
+            rm $LOCK
+        fi
+    else
+        echo ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . "
+        echo "Skipping Subject $k! (Already Procesed)"
+        echo -e ". . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . \n"
+    fi
+echo '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■'  
+done
+# End Timer
+e=$(date -u "+%s")
+d=$((e-s))
+cat <<EOF
+
+                                    (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ ✧ﾟ･: *ヽ(◕ヮ◕ヽ)
+
+                                    RECON-ALL-BASE COMPLETE
+
+                                    $(date)
+        
+                            $(($d / 3600)) hours $(($d %3600 / 60)) minutes and $(($d % 60)) seconds elapsed
+
+        ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ  ᕦ(ò_óˇ)ᕤ
+
+EOF
+cfmi-splash
+# Change back to Project Directory
+cd $projdir
+#  recon-all-base.sh
+#  
+#
+#  Created by Shady El Damaty on 11/2/15.
+#       EDITS 11/3/2015 (also debugged)
+#       ** added method for creating string to get time points for each subject
+#       ** added a timer for recon-all
+#       ** added a completed subjects list output that tells when a subject was finished, how long it took and by what user
+#       ** added lockfile method to allow parallel scripts running and no overlap of subject processing
+#       ** added some information about longitudinal processing (maybe move to usage under options?)
+#       EDITS 11/8/2015 (debugged)
+#       ** added check for completed subjects
+#       EDITS 11/9/2015
+#       ** fixed bug:  only subjects with wave 1 scan were being processed. Used grep and uniq to get proper list
+#       ** debugged timer for individual subjects
+#       ** added timer for entire script

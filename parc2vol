@@ -1,3 +1,0 @@
-#!/bin/bash
-
-mri_aparc2aseg --sub cvs_avg35_inMNI152 --o cortical-atlas.nii --labelwm --wmparc-dmax 6

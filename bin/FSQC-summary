@@ -1,0 +1,176 @@
+#!/bin/bash
+#
+# Given a subject ID as input generate a summary of QC statistics:
+#       * Completed Recon-All           :  time of completion
+#       * Recon-All Error List          :  10 line window around error messages in log
+#       * Defect Correction             :  defects and sizes
+#       * Euler Characteristic          :  spherical topoogical errors
+#       * Talairach Spatial Correlation :  spatial correlation and error
+#       * Contrast to Noise Ratio       :  gray-white & white-gray CNR (gaussian noise model)
+#
+#       $ 27 Jan 16 updated default with universal path to user directory
+#       $ 27 Feb 16 updated with help, optoins parsing and adjusted default args
+# --------------------------------------------------------------------------------------------
+# Default Arguments
+# -------------------
+comebackhere=$(pwd)
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+cd $comebackhere
+d=$(date)
+
+# Check if existing subject is defined (i.e for launchfv)
+if [ -z $subjid ]; then
+    subject="bert"
+else
+    subject=$subjid
+fi
+# Spit out all results to the local ADS-tutorial QC folder
+outdir="$usrpth/Projects/FSQC-summary"
+
+# --------------------------------------------------------------------------------------------
+# Help Function 
+show_help() {
+cat <<EOF
+
+Usage: ${0##*/} [-h|--help] [-sub|--subject] [-outdir|--outputdir]
+
+Gathers QC data for a subject processed by the FreeSurfer pipeline.  Writes text files to
+the specified output directory containing information regarding:
+
+1. Successful completion of recon-all (and any error messages if failed)
+2. List of topological defects
+3. Euler Number (quantitative metric of defects)
+4. Talairach Spatial Correlation
+5. Contrast to Noise Ratio
+
+    Options ::
+
+    -h --help               displays help
+    -sub --subject          subject ID in FreeSurfer '$SUBJECTSDIR'
+    -outdir --outputdir     output directory of QC summary statistics
+
+    Example ::
+
+        Output summary statistics for a single subject
+
+            ${0##*/} -sub 149959 -outdir ~/Projects/ADS-tutorial/QC
+
+        Output summary statistics for a subject already defined as '$subjid'
+
+            ${0##*/} -outdir ~/Projects/ADS-tutorial/QC
+
+    Default behavior ::
+
+        The script checks if the variable subjid is previously defined.  If not then
+        it assigns bert as the default subject.  All summary statistics are output to
+        ~/Projects/FSQC-summary.
+
+EOF
+}
+# --------------------------------------------------------------------------------------------
+# Parse Options
+while :; do
+    case $1 in
+        -h|--help)
+        show_help
+        exit
+        ;;
+        -sub|--subject)
+            if [ -n "$2" ]; then
+                subject=$2
+                shift
+            else
+                echo "ERROR: -sub --subject requires a non empty option argument.\n" >&2
+                exit
+            fi
+            ;;
+        -outdir|--outputdir)
+            if [ -n "$2" ]; then
+                outdir=$2
+                shift
+            else
+                echo "ERROR: -outdir --outputdir requires a non emptpy optoin argument.\n" >&2
+                exit
+            fi
+            ;;
+        -?*)
+            printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+            ;;
+        *)
+            break
+    esac
+
+    shift
+done
+# ----------------------------------------------
+#VARIABLE INITIALIZATION
+subdir="$SUBJECTS_DIR/$subject"
+outdir="$outdir/$subject"
+# Make output directory if does not exist
+if [ ! -d "$outdir" ]; then
+    echo "Making OUTPUT DIRECTORY: $outdir"
+    mkdir -p "$outdir"
+fi
+echo -e "\n===================================================================="
+echo -e "Generating FSQC Summmary Statistic Files \n"
+echo -e "\t Subject : $subject"
+echo -e "\t Output Directory: $outdir"
+echo "===================================================================="
+# --- Begin Script ----
+# Did Recon-All Complete Successfully?
+str=$(tail -1 $subdir/scripts/recon-all.log)
+substr="finished without error"
+if echo "$str" | grep -q "$substr"; then #run grep quietly
+    echo $str > $outdir/recon-all-success.log
+    echo -e "\nRecon-All Was A Success: \n"
+    cat $outdir/recon-all-success.log
+    echo -e "...........................................\n"
+    echo -e "\n"
+else
+    errorstr=$(cat $subdir/scripts/recon-all.log | grep -B 10 -A 10 "exited with ERRORS");
+    echo $errorstr > $outdir/recon-all-fail.log
+    echo -e "\nRecon-All Was A Fail: \n"
+    cat $outdir/recon-all-fail.log
+    echo -e "...........................................\n"    
+    echo -e "\n"
+fi
+# Print list of topological defects
+cat $subdir/scripts/recon-all.log | grep "DEFECT" > $outdir/defects.log
+echo -e "...........................................\n"    
+echo -e "Printing List of Defects:"
+echo -e "...........................................\n"    
+cat $outdir/defects.log
+echo -e "\n"
+# Print Euler Number
+echo -e "...........................................\n"    
+echo -e "Printing Euler Number:"
+echo -e "...........................................\n"    
+grep -A 2 "Computing euler" $subdir/scripts/recon-all.log > $outdir/euler-characteristic.log
+cat $outdir/euler-characteristic.log
+echo -e "\n"
+# Print Talairach Spatial Correlation
+echo -e "...........................................\n"    
+echo -e "Printing Talairach Spatial Correlation:"
+echo -e "...........................................\n"    
+cat $subdir/scripts/recon-all.log | grep "TalAviQA" > $outdir/talairach-spatial-correlation.log
+cat $outdir/talairach-spatial-correlation.log
+echo -e "\n"
+# Print Contrast to Noise Ratio
+echo -e "...........................................\n"    
+echo -e "Printing Contrast to Noise Ratio:"
+echo -e "...........................................\n"    
+mri_cnr $subdir/surf $subdir/mri/norm.mgz > $outdir/CNR.log
+cat $outdir/CNR.log
+echo -e "\n"
+echo -e "...........................................\n"    
+echo -e "Summary Statistics Complete ;) "
+echo -e "...........................................\n"    
+
+#  FSQC-summary.sh
+#  
+#
+#  Created by Shady El Damaty on 1/11/16.
+#

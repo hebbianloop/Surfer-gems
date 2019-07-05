@@ -1,0 +1,225 @@
+#!/bin/bash
+# Launch Freeview for an Input Subject
+# ------------------------------------------------------------------------------------------
+# Default Arguments
+# -------------------
+hname=$(hostname)
+mach=$(machine)
+cd ~/..
+me=$(whoami)
+usrpth=$(pwd)
+usrpth=$usrpth/$me
+cd $usrpth
+d=$(date)
+
+# default user arguments
+subjid='bert'
+
+optionstring=''
+imgformat=".mgz"
+
+# default freeview loadings
+vol=""
+bm=""
+t1=""
+wmv=""
+aseg=""
+
+surf=""
+pial=""
+wms=""
+inf=""
+
+editors=''
+# ------------------------------------------------------------------------------------------
+# Help
+show_help() {
+USAGE="$(cat<<-EOF
+Usage: ${0##*/} [-h|--help] [-sub|--subjid STRING] [-sd|--subjectsdir STRING] [-v|--vol] [-surf]\n
+				\t\t[-T1] [-bm|--brainmask] [-wmv|--whitemattervol] [-p|--pial] [-wms|--whitemattersurf]\n 
+				\t\t[-imgf|--imgformat STRING]\n\n
+				Launch FreeView for a given subject in a set SUBJECTS_DIR. User may set options to view 
+				specific volumes or surfaces.\n\n
+				
+				Options ::\n\n
+				\t-s --subjid\t\tsubject name\n
+				\t-sd  --subjectsdir\tsubjects directory (use this to change from default)\n\n				
+
+				 Loading Volumes	::\n
+				\t-v --vol FILE\t\tLoads volumes (must indicate which volume with FILE)\n
+				\t-T1\t\t\tLoads intensity normalized T1\n
+				\t-bm --brainmask\t\tLoads skull stripped brain mask\n
+				\t-wmv --whitemattervol\tLoads white matter probabalistic volume\n\n
+
+				 Loading Surfaces  ::\n
+				\t-surf\t\t\tLoads surfaces (must indicate which surfs)\n
+				\t-p --pial\t\tLoads pial surface\n
+				\t-wms --whitemattersurf\tLoads white matter surface\n\n
+
+				\t-imgf --imgformat\tFormat of volume images (.nii/.nii.gz/.mgz)\n
+				\t-h --help\t\tDisplays help\n\n
+
+				Example ::\n\n
+
+				\tLoad a subjects volumes\n\n
+
+					\t\t${0##*/} -s 001 -T1 -bm -wmv\n\n
+
+				\tLoad a subject"s pial and white surfaces\n\n
+
+					\t\t${0##*/} -s 001 -p -wms\n\n	
+
+				\tLoad a subject"s volumes and surfaces\n\n
+
+					\t\t${0##*/} -s 001 -T1 -bm -wmv -p -wms\n\n
+
+				\tLoad a subject for editing in Freeview\n\n
+				\t\t${0##*/} -s 001 -e
+
+				Default Behavior ::\n\n
+
+				\tWill show the brainmaks, pial and white surfaces by default for bert.\n\n
+
+				IMPORTANT !!\n\n
+
+				\t* Program assumes volume image format of .mgz by default (use -imgf option to set format)\n\n
+				
+EOF)"
+
+echo -e $USAGE
+
+}
+# ------------------------------------------------------------------------------------------
+# Parse Options
+while :; do
+    case $1 in
+	-h|--help)
+	    show_help
+	    exit
+	    ;;
+	-v|--vol)
+	    vol="show"
+	    t1='show'
+	    bm='show'
+	    wm='show'
+	    aseg='show'
+	    ;;
+	-surf|--surf)
+	    surf="show"
+		pial="show"
+		wms="show"
+		inf="show"	    
+	    ;;
+	-T1)
+	    vol="show" && t1="show"
+	    ;;
+	-bm|--brainmask)
+	    vol="show" && bm="show"
+	    ;;
+	-bet|--showbets)
+		vol="show" && bet="show"
+		;;
+	-wmv|--whitemattervol)
+	    vol="show" && wm="show"
+	    ;;
+	-aseg|--aseg)
+	    vol="show" && aseg="show"
+	    ;;	    
+	-p|--pial)
+	    surf="show" && pial="show"
+	    ;;
+	-wms|--whitemattersurf)
+	    surf="show" && wms="show"
+	    ;;
+	-inf|--inflated)
+	    surf="show" && inf="show"
+	    ;;
+	-o|--orig)
+	    surf="show" && orig="show"
+	    ;;	    
+	-e|--edit)
+	    editors='edit'
+	    ;;	    	    
+	-s|--subjid)
+	    if [ -n "$2" ]; then
+			subjid=$2
+			shift
+	    else
+			echo "ERROR: -s --subjid requires a non empty option argument.\n" >&2
+			exit
+	    fi
+	    ;;
+	-sd|--subjectsdir)
+	    if [ -n "$2" ]; then
+			SUBJECTS_DIR=$2
+			shift
+	    else
+			echo "ERROR: -sd --subjectsdir requires a non empty option argument.\n" >&2
+			exit
+	    fi
+	    ;;
+	-imgf|--imgformat)
+	    if [ -n "$2" ]; then
+			imgformat=$2
+			shift
+	    else
+			echo "ERROR: -imgf --imgformat requires a non empty option argument.\n" >&2
+			exit
+	    fi
+	    ;;	    
+	-?*)
+	    printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+	    ;;
+	*)
+	    break
+    esac
+
+    shift
+done
+# ------------------------------------------------------------------------------------------
+# Begin Script
+# ---------------------
+# Check if SUBJECTS DIRECTORY exists
+if [ ! -d "${SUBJECTS_DIR}" ]; then
+    echo "ERROR! Subjects Directory not found:  $SUBJECTS_DIR"
+    exit
+fi
+# Check if loading subject for editing
+if [ "${editors}" ]; then
+#	optionstring=${optionstring}"-c "
+        optionstring=${optionstring}
+	[ ! -d "${SUBJECTS_DIR}/${subjid}/tmp" ] && mkdir -v "${SUBJECTS_DIR}/${subjid}/tmp"
+	#[ ! -f "${SUBJECTS_DIR}/${subjid}/tmp/control.dat" ] && touch ${SUBJECTS_DIR}/${subjid}/tmp/control.dat
+#	optionstring=${optionstring}"${SUBJECTS_DIR}/${subjid}/tmp/control.dat "
+	optionstring=${optionstring}
+	vol='show' && t1='show' && bm='show' && wmv='show' && aseg='show'
+	surf='show' && pial='show' && wms='show' && inf='show'
+fi
+# Check if volume flag is set
+if [ "${vol}" ]; then
+    optionstring=${optionstring}"-v "
+    # Check if t1 is indicated
+    [ "${t1}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/T1$imgformat "
+    # Check if brainmask is indicated
+    [ "${bm}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask$imgformat "
+    # Check if Brain Extraction Results is indicated
+    [ "${bet}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/brainmask*-bet-[2345].nii* "
+    # Check if whitematter is indicated
+    [ "${wmv}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/wm$imgformat:colormap=heat:opacity=0.4:visible=0 "
+    # Check if aseg is indicated
+    [ "${aseg}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/aseg$imgformat:colormap=lut:opacity=0.4:visible=0 "
+    # Check if original is indicated
+    [ "${orig}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/mri/orig$imgformat "
+fi
+# Check if surface flag is set
+if [ "${surf}" ]; then
+    optionstring=$optionstring"-f "
+    # Check if pial surface is set
+    [ "${pial}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.pial:edgecolor=red $SUBJECTS_DIR/$subjid/surf/rh.pial:edgecolor=red "
+    # Check if white matter surface is set
+    [ "${wms}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.white:edgecolor=blue $SUBJECTS_DIR/$subjid/surf/rh.white:edgecolor=blue "
+    # Check if white matter surface is set
+	#[ "${inf}" ] && optionstring=$optionstring"$SUBJECTS_DIR/$subjid/surf/lh.inflated:edgecolor=yellow $SUBJECTS_DIR/$subjid/surf/rh.inflated:edgecolor=green "
+fi
+# Run FreeView with set options
+freeview ${optionstring} &
