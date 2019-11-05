@@ -1,1 +1,4 @@
 .DS_Store
+surfergems.runtime.out
+surfergems.runtime.err
+.ipynb*

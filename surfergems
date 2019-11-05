@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-## The Magical Surfer Gem
+## The Magical Surfer Gem Box
 ##
 SECONDS=0
 ##
+## TODO add ability to kill by pid (need intelligent ps aux matching)
 ## TODO read file created from job submission script to know when recon started (to calculate elapsed time)
-## TODO add HTML of SURFACES, EDITS pMAP
 ## TODO MAKE FASTER
 ## TODO Average DEFECT size
 ## TODO this would be so much better with JSON databasing (maybe with mongodb?)
@@ -13,196 +13,152 @@ SECONDS=0
 ##		-- build JSON file with subject recon information (edited? if so where? which commands run? CNR? etc)
 ##		-- build JSON file with subject demographic information
 
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Usage info
-function surfergems_usage(){
-	surfergems_defaults
-read -r -d '' HELPMESSAGE <<EOF
-
-Usage :: ${0##*/} 
--s|--subjects LIST -sd|--subjects_dir DIR --status active|done|failed -f|--files --stats --deface BASENAME --convert --kill-jobs PATTERN --web-report active|done|failed --web-report-dir|-wrd DIR --no-colors|--plain|-nc -v| --verbose --usage|usage -h|--help|help|?|
-\n
-EOF
-if [ ${HELP} = 'more' ]; then
-read -r -d '' HELPMESSAGE <<EOF
-\n\033[33;5m✨\033[0m${BLUE}The Magical Surfer-gem Box${BLUE}\033[33;5m✨\033[0m\n\n
-
-This program contains a bounty of gems for working with FreeSurfer Datasets.
-
-\n\n ${BBLUE}■ ${GREY}Summarizing Jobs${NC}
-\n\n\t ${GREY}checking a single subject${NC}
-\n\t >> ${0##*/} -s SUBJECTID 
-\n\n\t ${GREY}also works for lists${NC}
-\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3
-\n\n\t ${GREY}get more information${NC}
-\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3 -v
-\n\n\t ${GREY}summarize all data in SUBJECTS_DIR${NC}
-\n\t >> ${0##*/} --status
-\n\n\t ${GREY}check only failed${NC}
-\n\t >> ${0##*/} --status failed
-\n\n\t ${GREY}check only currently running jobs${NC}
-\n\t >> ${0##*/} --status active
-\n\n\t ${GREY}check only completed jobs${NC}
-\n\t >> ${0##*/} --status done
-\n\n\t ${GREY}check only completed and failed jobs${NC}
-\n\t >> ${0##*/} --status failed --status done
-\n\n\t ${GREY}find which subjects in a list are completed${NC}
-\n\t >> ${0##*/} --status done -s SUBJECT-1 SUBJECT-2 SUBJECT-3
-\n\n\t${GREY} ℹ️   You can always add${NC} -v${GREY} for more information${NC}
-
-\n\n ${BBLUE}■ ${GREY}Check Data for Complete File Manifest${NC}
-\n\n\t ${GREY}check all subjects in SUBJECTS_DIR${NC}
-\n\t >> ${0##*/} -f
-\n\n\t ${GREY}print details about which files are missing for a specific subject ${NC}
-\n\t >> ${0##*/} -s SUBJECTID -f -v 
-
-\n\n ${BBLUE}■ ${GREY}Compile Summary Statistics${NC}
-\n\t >> ${0##*/} -s SUBJECTID --stats
-
-\n\n ${BBLUE}■ ${GREY}Convert MGZs into NII.GZ${NC}
-\n\t >> ${0##*/} -s SUBJECTID --convert
-\n\n\t ${GREY}leave off the SUBJECTID to convert all subjects in SUBJECTS_DIR${NC} -v
-\n\t >> ${0##*/} --convert
-
-\n\n ${BBLUE}■ ${GREY}Deface Identifying Images for all in SUBJECTS_DIR${NC}
-\n\t >> ${0##*/} --deface
-\n\n\t ${GREY}or just deface a specific subject${NC}
-\n\t >> ${0##*/} -s SUBJECTID --deface
-\n\n\t ${GREY}specify the basename of volumes to deface${NC}
-\n\t >> ${0##*/} -s SUBJECTID --deface 001 --deface T1
-
-\n\n ${BBLUE}■ ${GREY}Create HTML webreport with Surfer-webgems for all in SUBJECTS_DIR${NC}
-\n\t >> ${0##*/} --web-report --web-report-dir ~/My-Demo-WebReport
-\n\n\t ${GREY}or just make for specific subject(s)${NC}
-\n\t >> ${0##*/} -s SUBJECTID --web-report 'done' --we-report-dir ~/SUBJECTID-WebReport
-
-\n\n ${BBLUE}■ ${GREY}Getting Help${NC}
-\n\t >> ${0##*/}
-\n\t >> ${0##*/} -h
-\n\t >> ${0##*/} -u
-\n\t >> ${0##*/} --help
-\n\t >> ${0##*/} --usage
-
-\n\n ${BBLUE}■ ${GREY}No Colors (Plain Text)${NC}
-\n\t >> ${0##*/} -nc  --help
-\n\t >> ${0##*/} -s SUBJECTID -nc
-
-EOF
-fi
-echo -e ${HELPMESSAGE} | fold -w 130 -s # print and wrap
+####################################################################################################################
+# TODO make main menu
+function surfergems_main(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_main $@"
+	echo 'main menu'
+	# read user input
 }
+export -f surfergems_main
+####################################################################################################################
 ### DEFINE FUNCTION
-## figure out where function is being called from (follow symlinks)
+#   figure out where function is being called from (follow symlinks)
+####################################################################################################################
 function surfergems_whereami(){
+	# >&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_whereami $@"
 	while [ -h "${SOURCE}" ]; do # resolve $SOURCE until the file is no longer a symlink
 		DIR="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"
 		SOURCE="$(readlink "${SOURCE}")"
 		[[ ${SOURCE} != /* ]] && SOURCE="${DIR}/${SOURCE}" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
 	done
-	DIR="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"	
+	export DIR="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"	
+
 	# get where this script lives
 	SOURCEPATH="`dirname \"$0\"`"              # relative
-	SOURCEPATH="`( cd \"${SOURCEPATH}\" && pwd )`"	
+	export SOURCEPATH="`( cd \"${SOURCEPATH}\" && pwd )`"	
 }
+export -f surfergems_whereami
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Preallocate arrays and default values
+##  preallocate arrays and default values
+####################################################################################################################
 function surfergems_defaults(){
 	# Default Options
-	OPTS="--no-colors --plain -nc --status -v --verbose --convert -f --files --web-report --web-report-dir -wrd --detail --kill-jobs -h --help --usage -sd --subjects-dir -s --subjects"
-	[ ! ${VERBOSE} ] && VERBOSE=''
+	export DEBUG=''
+	export OPTS="--no-colors --plain -nc --status -v --verbose --convert -f --files --web-report --web-report-dir -wrd --detail --kill-jobs -h --help --usage -sd --subjects-dir -s --subjects"
+	[ ! ${VERBOSE} ] && export VERBOSE=''
+	export AVERAGENAME='average'
+	export OVERWRITE=''
+	export EDITSUMMARY=''
 	# KILL PATTERN
-	[ ! "${KILLPATTERN}" ] && KILLPATTERN='recon-all -s'
+	[ ! "${KILLPATTERN}" ] && export KILLPATTERN='recon-all -s'
 	## Arrays 
-	[ ! ${STATUS} ] && STATUS=()								# init STATUS if it doesn't exist 
-	[ ! "${RECONSTATS}" ] && RECONSTATS=() 												# array of status outputs across subjects
-	FINISHEDSUBJECTS=() && FINISHTIMES=() && STARTTIMES=() 		# array of subjects, completion times and start times of finished jobs
-	RUNNINGSUBJECTS=() && RUNNINGSTATUS=() && RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
-	FAILEDSUBJECTS=() && FAILTIMES=() && FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
-	RUNNINGHOSTS=() && FAILEDHOSTS=() && FINISHEDHOSTS=()
+	[ ! ${STATUS} ] && declare -g STATUS=()						# init STATUS if it doesn't exist 
+	[ ! "${RECONSTATS}" ] && declare -g RECONSTATS=() 			# array of status outputs across subjects
+	[ ! ${MEASURES} ] && declare -g MEASURES=()					# measures for statistics
+	[ ! ${ATLAS} ] && declare -g ATLAS=()
+	declare -g FINISHEDSUBJECTS=() && declare -g FINISHTIMES=() && declare -g STARTTIMES=() 	# array of subjects, completion times and start times of finished jobs
+	declare -g RUNNINGSUBJECTS=() && declare -g RUNNINGSTATUS=() && declare -g RUNNINGTIME=() 	# array of subjects, statuses and last reported run time of active jobs
+	declare -g FAILEDSUBJECTS=() && declare -g FAILTIMES=() && declare -g FAILPOINT=()			# array of subjects, exit times and last reported step of failed jobs
+	declare -g RUNNINGHOSTS=() && declare -g FAILEDHOSTS=() && declare -g FINISHEDHOSTS=()
+	declare -g RUNNINGID=()
 	## stats arrays for table detail
-	status=() && hname=() && talqa=() && bcnr=() && acnr=()
-	ndef=() && leno=() && reno=() && bmedits=() && runtime=()
-	wmerased=() && wmfilled=()	
+	declare -g hname=() && declare -g talqa=() && declare -g bcnr=() && declare -g acnr=()
+	declare -g ndef=() && declare -g leno=() && declare -g reno=() && declare -g bmedits=() && declare -g runtime=()
+	declare -g wmerased=() && declare -g wmfilled=()	
 	## manifest check list
-	MISSING=() && EXISTS=() && RERUNSUB=() && COMPLETESUB=() 	# array for subjects with missing/existing/complete data or those needing rerun
+	declare -g MISSING=() && declare -g EXISTS=() && declare -g RERUNSUB=() && declare -g COMPLETESUB=() 	# array for subjects with missing/existing/complete data or those needing rerun
 	## Pretty Colors
-	[ ! ${PRETTY} ] && PRETTY='paintitpretty'
+	[ ! ${PRETTY} ] && export PRETTY='paintitpretty'
 	#  make things pretty by default unless user asks
 	if [ ${PRETTY} = 'paintitpretty' ]; then
-		RED='\033[0;31m'
-		BRED='\033[1;31m'
-		YELLOW='\033[1;33m'
-		GREEN='\033[1;32m'
-		BLUE='\033[1;34m'
-		GREY='\033[1;37m'
-		NC='\033[0m' 
-		BBLUE='\033[1;40m'
-		NBC='\033[49m'
-		GGREY='\033[1;30m'
-		YBC='\033[47m'
-		LRED='\033[1;31m'
+		export RED='\033[0;31m'
+		export BRED='\033[1;31m'
+		export YELLOW='\033[1;33m'
+		export GREEN='\033[1;32m'
+		export BLUE='\033[1;34m'
+		export GREY='\033[1;37m'
+		export NC='\033[0m' 
+		export BBLUE='\033[1;40m'
+		export NBC='\033[49m'
+		export GGREY='\033[1;30m'
+		export YBC='\033[47m'
+		export LRED='\033[1;31m'
 	else
-		RED='' && BRED='' && YELLOW=''
-		GREEN='' && BLUE='' && GREY=''
-		NC='' && BBLUE='' && NBC=''
-		GGREY='' && YBC='' && LRED=''
+		export RED='' && export BRED='' && export YELLOW=''
+		export GREEN='' && export BLUE='' && export GREY=''
+		export NC='' && export BBLUE='' && export NBC=''
+		export GGREY='' && export YBC='' && export LRED=''
 	fi	
 	## Table Preallocation
-	TAB=$'\t' && TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}NumWhiteMaskDel${TAB}NumWhiteMaskFill${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
+	export TAB=$'\t' && declare -g TABLE=("SubjectID${TAB}Machine${TAB}JobStatus${TAB}TotalRunTime${TAB}ReconStage${TAB}NumBrainMaskEdits${TAB}NumWhiteMaskDel${TAB}NumWhiteMaskFill${TAB}TalCorr${TAB}OrigCNR${TAB}BrainMaskCNR${TAB}NumDefects${TAB}LEulerNo${TAB}REulerNo\n")
 	# HTML Web Report
-	REPORTREPO_TEMPLATE="https://github.com/seldamat/Surfer-webgems.git"
-	REPORTREPO=''
+	export REPORTREPO_TEMPLATE="https://github.com/seldamat/Surfer-webgems.git"
+	export REPORTREPO=''
 	## Files for Webreports
-	SURFs='lh.pial lh.white rh.pial rh.white'
-	MGZs='aparc.DKTatlas+aseg T1 brainmask wm wmparc ribbon edits aseg aparc+aseg aparc.a2009s+aseg'
-	# [ ! "${DEFACEFILES}" ] && DEFACEFILES='orig T1 001'
+	export IEXT='mgz' && export OEXT='nii.gz'
+	declare -g SURFs=("lh.pial" "lh.white" "lh.inflated" "rh.pial" "rh.white" "rh.inflated")
+	declare -g MGZs=("T1" "brainmask" "wm" "aseg" "aparc+aseg" "aparc.DKTatlas+aseg" "aparc.a2009s+aseg" "wmparc")
+	[ ! "${DEFACEFILES}" ] && declare -g DEFACEFILES=("orig" "T1" "001")
+	[ ! "${CONVERTSURFFILES}" ] && declare -g CONVERTSURFFILES=("")
+	[ ! "${CONVERTVOLFILES}" ] && declare -g CONVERTVOLFILES=("")
 	#  pre-allocate variables here to fill later
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_defaults $@"
 }
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######### DATASET & JOB MANAGEMENT
-#########
-#########
-################################################################################################################
-################################################################################################################
+export -f surfergems_defaults
+####################################################################################################################
+#
+# DATASET & JOB MANAGEMENT
+#
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Check all files are present for subject
-##  TODO -
-### 		figure out longitudinal manifest...
-### 		distinguish between autorecon1, 2 and 3 completion (maybe use # of files present) - 20 for ar1
+#   check all files are present for subject
+####################################################################################################################
+##  TODO figure out longitudinal manifest...
+##       distinguish between autorecon1, 2 and 3 completion (maybe use # of files present) - 20 for ar1
+##       parallelize this :: 
+###							write sub-function surfergems_files.subject
+###							call surfergems_files.subject with gnu parallel & capture vars
+### check status ---> running, successful jobs, failed jobs
 function surfergems_files(){
-	echo -e "\nCross-checking Dataset with FreeSurfer File Manifest:\n"
-	[ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ] && surfergems_status
-	[ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	[ ! "${SUBJECTS}" ] && surfergems_status && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && NUMFILES=$(echo "${MANIFEST}" | wc -l)
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_files $@"	
+	local status=""
+	export MANIFEST=$(cat ${SOURCEPATH}/fs-files-manifest.txt) && export NUMFILES=$(echo "${MANIFEST}" | wc -l)	
+	# build list of active/success/failed jobs (all inclusive)
+	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ];
+	then
+		surfergems_status
+		return 0
+	fi		
 	# iterate and check subjects for status and against manifest
 	for SUBJECT in ${SUBJECTS[@]}; do
 		[ "$(echo ${RUNNINGSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏃‍♂️  ${BLUE}${SUBJECT}${GREY} (running)")
 		[ "$(echo ${FAILEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🚧  ${BLUE}${SUBJECT}${YELLOW} (failed)")
-		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BLUE}${SUBJECT}${GREEN} (done)")
+		[ "$(echo ${FINISHEDSUBJECTS[@]} | grep ${SUBJECT})" ] && status=$(echo "🏁  ${BLUE}${SUBJECT}${GREEN} (success)")
 		for FILE in ${MANIFEST}; do
 			if [ "$(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name ${FILE} )" ]; then
-				#echo -e "${GREEN}✔ ${SUBJECT} :: ${FILE} (ok)\n"
-				EXISTS+=("${SUBJECT} ${FILE}")
+				printf "\r %s \r${GREEN} ✔ ${BLUE}${SUBJECT} :: ${FILE} ${GREY}(ok)${NC}\r" $(tput el)
+				declare -g EXISTS+=("${SUBJECT} ${FILE}")
 			else
-				#echo -e "${YELLOW}⨯ ${SUBJECT} :: ${FILE} (missing)\n" >&2
-				MISSING+=("${SUBJECT} ${FILE}")
+				# >&2 echo -e "${LRED}⨯ ${BLUE}${SUBJECT} :: ${FILE} ${YELLOW}(missing)${NC}\n" 
+				declare -g MISSING+=("${SUBJECT} ${FILE}")
 			fi
 		done
 		NUMSUBFILES=$(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | sed "s|${SUBJECT}||g" | wc -w)
-		# NUMFOUND=${#EXISTS} && NUMMISSING=${#MISSING}
-		# PERCENTFOUND=$(echo "scale=2; ${NUMFOUND} / ${NUMFILES} * 100" | bc)
-		# if (( $(echo "${PERCENTFOUND} < 100" | bc -l) )); then
+		# NUMFOUND=${#EXISTS} && NUMMISSING=${#MISSING} && PERCENTFOUND=$(echo "scale=2; ${NUMFOUND} / ${NUMFILES} * 100" | bc)
 		if [ "${NUMSUBFILES}" != "${NUMFILES}" ]; then
-			RERUNSUB+=("${SUBJECT}")
+			declare -g RERUNSUB+=("${SUBJECT}")
 			# report manifest
-			echo -e "${status} - ${NUMSUBFILES} / ${NUMFILES} manifest files found${NC}"
+			echo -e "${status} - ${YELLOW}${NUMSUBFILES} / ${NUMFILES} manifest files found${LRED} (incomplete)${NC}"
+			# >&2 echo -e "${SUBJECT} incomplete file manifest ${NUMSUBFILES} / ${NUMFILES}"
 		else
-			echo -e "${status}  ${GREEN}✔ all files (ok)${NC}"
-			COMPLETESUB+=("${SUBJECT}")
+			echo -e "${status}  ${GREEN}✔ all files ${GREY}(ok)${NC}"
+			declare -g COMPLETESUB+=("${SUBJECT}")
 		fi
+			## TODO - more elegant solution rather than brute text stream editing
 			if [ ${VERBOSE} ]; then
 				## missing volumes
 				[ "$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz'))" ] && echo -e "${RED}x ${YELLOW}$(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g") | wc -w) volumes missing ${NC}:: $(echo $(printf '%s %s\n' ${MISSING[@]} | grep "${SUBJECT}" | grep -oE '.*.mgz' | sed "s|${SUBJECT} ||g"))"
@@ -248,173 +204,285 @@ function surfergems_files(){
 				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.txt'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | wc -w) txt files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.txt' | sed "s|${SUBJECT}||g")))"
 				## present log
 				# [ "$(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep -oE '.*.log'))" ] && echo -e "${GREEN}✔ $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | wc -w) log files ok ${NC}:: $(echo $(printf '%s %s\n' ${EXISTS[@]} | grep "${SUBJECT}" | grep '.*.log' | sed "s|${SUBJECT}||g")))"
-				echo -e ""
 			fi		
-		#check-subject ${SUBJECT}
 	done
+	# echo -e "\n${GREEN}EXISTING FILE MANIFEST:${NC} $(printf '%s ' ${EXISTS[@]})" >&2
+	# echo -e "\n${YELLOW}MISSING FILE MANIFEST:${NC} $(printf '%s ' ${MISSING[@]})" >&2
+	declare -g FILECHECK='done'
+	return 0
 }
+export -f surfergems_files
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
+#   Get Arrays of Subjects, Runtimes and Status for Active, Completed and Failed Recons
+####################################################################################################################
+##  TODO this can be parallelized with a major rewrite (subfunctions with serial input and concat output)
+##		 sometimes subjects aren't running but have isrunning
+##		 need to distinguish between local and remote running jobs
 function surfergems_status(){
-	##	
-        surfergems_defaults
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_status $@"
 	# declare vars for status check & printing
-	[ ! "${STATUS}" ] && STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")	
+	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}" "${RED}incomplete${NC}")	
 	echo -e "\nFinding FreeSurfer Jobs with Status: ${STATUS[@]} \n\n   🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
 	# Find all subjects with IsRunning file, get current status, time and host
-	## TODO Sometimes Subjects aren't running but have file.. can you distinguish this?
 	if [ "$(echo ${STATUS[*]} | grep 'active')" ]; then
 	    for SUBJECT in ${SUBJECTS[@]}; do
-		    RUNNINGSUBJECTS+=($(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
+		    declare -g RUNNINGSUBJECTS+=($(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
 		done
 		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
-			#printf "🏃‍  ...found ${#RUNNINGSUBJECTS[*]} active jobs\r"
-			RUNNINGSTATUS+=("$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
-			RUNNINGTIME+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
-			RUNNINGHOSTS+=("$(grep "HOST" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | awk '{print $NF}' | sed 's/.local//')")
+			declare -g RUNNINGSTATUS+=("$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+			declare -g RUNNINGTIME+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
+			declare -g RUNNINGID+=("${SUBJECT} $(grep "PROCESSID" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | awk '{print $NF}')")
+			declare -g RUNNINGHOSTS+=("$(grep "HOST" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | awk '{print $NF}' | sed 's/.local//')")
 		done
 	fi
 	# Find all subjects with recon-all.log file and list those with finished message at end of log
-	if [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+	if [ "$(echo ${STATUS[*]} | grep 'success')" ]; then
 		RECONS=""
 		for SUBJECT in ${SUBJECTS[@]}; do
 		    RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "
 		done
-		# echo -e '\n\r'
 		for RECON in ${RECONS}; do
-#			printf "🏁  ...found ${#FINISHEDSUBJECTS[*]} completed jobs\r" ${FINISHEDSUBJECTS[*]}
 			if [ "$(tail -n 5 ${RECON} | grep -B 0 "finished without error")" ]; then
-				FINISHEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | awk '{print $3}')")
+				declare -g FINISHEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | awk '{print $3}')")
 				# FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | awk '{i = 6; for (--i; i >= 0; i--){ printf "%s ",$(NF-i)} print ""}';)")
-				FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
-				FINISHEDHOSTS+=("$(grep "hostname" ${RECON} | tail -n 1 | awk '{print $NF}' | sed 's/.local//')")
-				STARTTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')")
+				declare -g FINISHTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
+				declare -g FINISHEDHOSTS+=("$(grep "hostname" ${RECON} | tail -n 1 | awk '{print $NF}' | sed 's/.local//')")
+				declare -g STARTTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')")
 			fi
 		done
 	fi
 	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
-		# RECONS="$(find ${SUBJECTS_DIR}/*/scripts  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g')"
 		RECONS=""
 		for SUBJECT in ${SUBJECTS[@]}; do
 			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "			
 		done
-		# [ ! "${RECONS}" ] && 
-		# echo -e '\r'
 		for RECON in ${RECONS}; do
 			SUBJECT=$(echo ${RECON} | sed "s|${SUBJECTS_DIR}/||g" | sed 's|/scripts/recon-all.log||g' | sed 's|/||g')
-#			printf "🚧  ...found ${#FAILEDSUBJECTS[*]} failed jobs\r"
 			if [ "$(tail -n 10 ${RECON} | grep -B 0 "exited with ERRORS at")" ]; then
-				FAILEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | awk '{print $3}')")
-				FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
-				FAILTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
-				FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+				declare -g FAILEDSUBJECTS+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | awk '{print $3}')")
+				declare -g FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+				declare -g FAILTIMES+=("$(tail -n 5 ${RECON} | grep -B 0 "exited with ERRORS at" | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' | tail -n 1)")
+				declare -g FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
 			fi
 			# Collect any other subjects that don't show running files, a fail message at end of log OR
 			if [ ! "$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null)" ] && [ ! "$(tail -n 5 ${RECON} | grep -B 0 "finished without error")" ] && [ ! "$(tail -n 10 ${RECON} | grep -B 0 "exited with ERRORS at")" ]; then
-				FAILEDSUBJECTS+=("$(echo ${SUBJECT})")
-				FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
-				FAILTIMES+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
-				FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+				declare -g FAILEDSUBJECTS+=("$(echo ${SUBJECT})")
+				declare -g FAILPOINT+=("$(tail -n 5 "${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log" | grep '#@#' | tail -n 1 | sed "s|#@#|⦿|g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}'| awk '{{$NF=""}print}')")
+				declare -g FAILTIMES+=("$(egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)")
+				declare -g FAILEDHOSTS+=("$(grep 'hostname' ${RECON} | tail -1 | awk '{print $NF}' | sed 's/.local//')")
 			fi
 		done
 	fi
-	# create list of completed and rerun subjects 
-	# RERUNSUB+=("${FAILEDSUBJECTS[*]}") && COMPLETESUB+=("${SUBJECT}")	
-	SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
-		if [  "$(echo "${STATUS[*]}" | grep 'failed')" ]; then
-			echo -e "🙌  No Failed Jobs! All Participants Report Successful Completion\n\t..give yourself a pat on the back (hint: 🍩)"
-		fi
-		if [ "$(echo "${STATUS[*]}" | grep 'done')" ]; then
-			echo -e "∅  No Completed Jobs Found.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
-		fi
-		if [ "$(echo "${STATUS[*]}" | grep 'active')" ]; then
-			echo -e "∅  No Active Jobs Detected.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
-		fi
+	# SUBJECT can either be running, finished running or failed running
+	declare -g SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
+	#	
+	if [ "$(echo ${STATUS[*]} | grep 'incomplete')" ] || [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+		surfergems_files
 	fi
+	# signal that the status has been checked (prevents this from being run twice when called to populate an empty subjects variable that may be empty anyway bc none satisfy conditions (i.e. failed))
+	export STATUSCHECK='done'
+	export SUBJECTS
+	export RUNNINGSUBJECTS
+	export FINISHEDSUBJECTS
+	export FAILEDSUBJECTS
+	surfergems_printstatus
+	return 0
 }
+export -f surfergems_status
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Stop all current recon jobs using either SGE (if available) or KILL command
+#	get individual subject status (inactive, not used anywhere yet)
+####################################################################################################################
+## TODO
+function surfergems_status_subject(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_status_subject $@"		
+	# get last reported recon status
+	echo "$(tail -n 5 ${SUBJECTS_DIR}/${1}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')"
+}
+export -f surfergems_status_subject
+####################################################################################################################
+### DEFINE FUNCTION
+#   stop all current recon jobs using either SGE (if available) or KILL command
+####################################################################################################################
+##  TODO can use host information to kill remote jobs
 function surfergems_killJobs(){
-	echo -e '\n 🗑  Interrupting and Deleting ALL active Jobs for User: '$(whoami)'\n'
-	[ $(which qdel) ] && echo -e '\n\t Deleting SGE jobs...' && qdel -u $(whoami)
-	[ ! $(which qdel) ] && echo -e "🖐  ${YELLOW}Hanging up all local processes matching ${GREY}'${KILLPATTERN}'${YELLOW} pattern${NC}" && kill -9 $(echo $(ps aux | grep 'recon-all -s '| tail -n +2 | awk '{print $2}')) 2> /dev/null
-	echo -e '\n\t Cleaning up IsRunning files...\n'
-	[ "$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \)  -name 'IsRunning*' 2> /dev/null)" ] && parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/  -name 'IsRunning*' 2> /dev/null)
-	[ -z "${STATUS}" ] && exit
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_killJobs $@"
+	[ -z ${STATUSCHECK} ] && STATUS=('active') && surfergems_status
+	echo -e "\n 🗑  Hanging Up Active Processes: ${SUBJECTS[@]}\n"
+	for subject in ${SUBJECTS[@]}; do
+		kill -9 $(echo $(printf '%s %s\n' ${RUNNINGID[@]} | grep "${SUBJECT}") | awk '{print $NF}')
+		find ${SUBJECTS_DIR}/${subject} \( ! -regex '.*/\..*' \)  -name 'IsRunning*' -exec rm -v {} \;
+	done
+	## TODO this is dangerous
+	# [ $(which qdel) ] && echo -e '\n\t Deleting GRID jobs... for ' $(whoami) && qdel -u $(whoami)
+	# [ ! $(which qdel) ] && echo -e "🖐  ${YELLOW}Hanging up all local processes matching ${GREY}'${KILLPATTERN}'${YELLOW} pattern${NC}" && kill -9 $(echo $(ps aux | grep ${KILLPATTERN} | tail -n +2 | awk '{print $2}')) 2> /dev/null
+	# [ "$(find ${SUBJECTS_DIR}/ \( ! -regex '.*/\..*' \)  -name 'IsRunning*' 2> /dev/null)" ] && parallel -k --link rm -v {} ::: $(find ${SUBJECTS_DIR}/  -name 'IsRunning*' 2> /dev/null)
+	# [ -z "${STATUS}" ] && exit
 }
+export -f surfergems_killJobs
+####################################################################################################################
 ### DEFINE FUNCTION
+#   rerun failed / incomplete
+####################################################################################################################
+##  TODO run with -make all by default, allow user to specify flags	
+##   	 create SGE script if sge detected
+##   	 otherwise run with gnu parallel
 function surfergems_rerun(){
-echo 'test'
-# create SGE script if sge detected
-# otherwise run with gnu parallel
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_rerun $@"
+	echo 'work in progress'
 }
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######### PARSE FILES FOR STATS
-#########
-#########
-################################################################################################################
-################################################################################################################
+export -f surfergems_rerun
+####################################################################################################################
+#
+# PRINTING TO FILE
+#
+####################################################################################################################
+### DEFINE FUNCTION
+#   parse output files for stats
+####################################################################################################################
 ## TODO make individual functions for each of the stats and make them option accessible 
 ##		must update TABLE header based on this
 function surfergems_stats(){
-	[ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ] && surfergems_status
-	[ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	[ ! "${SUBJECTS}" ] && surfergems_status && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	# Summarize edits for all subjects
-	surfergems_subject-edits
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_stats $@"		
+	local subject="$@"
+	# declare vars for status check & printing
+	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}" "${GREEN}done${NC}" "${RED}incomplete${NC}")		
+	# check for subject input
+	if [ ! "${subject}" ]
+	then
+		if [ ! "$(echo ${SUBJECTS[@]})" ]
+		then
+			# find finished subjects and create global var if not already existing
+			# -- only convert finished subjects`
+			surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject="${SUBJECTS[@]}"
+		else
+			# otherwise just use existing global variable and run serially
+			local subject="${SUBJECTS[@]}"
+		fi
+	fi
+	# summarize subject edits
+	if echo ${subject} | parallel -k --link '(surfergems_subject_edits {})' 2> >(zenity --progress --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Edits Summary" --text="Summarizing Subject Edits" --width=300 --height=100) >&4
+	then
+		>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  parallel -k --link surfergems_subject_edits {} ::: ${subject}${NC}\n"
+	else
+		>&2 printf "${BRED}${ERROR}◀︎|⁃‣ERROR${GREY}  parallel -k --link surfergems_subject_edits {} ::: ${subject}${NC} failed\n"
+		return 1
+	fi	
+	# generate file manifest
+	if surfergems_files
+	then
+		>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_files${NC}\n"
+	else
+		>&2 printf "${ERROR}◀︎|⁃‣ERROR${GREY}  surfergems_files${NC} failed\n"		
+		return 1
+	fi			
+	# Calculate stats for all subjects
+	if surfergems_stats_calc "${subject}"
+	then
+		>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_stats_calc ${subject}${NC}\n"
+	else
+		>&2 printf "${ERROR}◀︎|⁃‣ERROR${GREY}  surfergems_stats_calc ${subject}${NC} failed\n"		
+		return 1
+	fi
+	# Build table
+	if surfergems_stats_table
+	then
+		>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_stats_table ${NC}\n"
+	else
+		>&2 printf "${ERROR}◀︎|⁃‣ERROR${GREY}  surfergems_stats_table ${NC} failed\n"		
+		return 1
+	fi		
+	return 0
+}
+export -f surfergems_stats
+####################################################################################################################
+### DEFINE FUNCTION
+#   parse output files for stats
+####################################################################################################################
+## TODO make individual functions for each of the stats and make them option accessible 
+##		must update TABLE header based on this
+function surfergems_stats_calc(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_stats_calc $@"	
+	local subject="$@"	
+	# declare vars for status check & printing
+	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}" "${GREEN}done${NC}" "${RED}incomplete${NC}")
 	# Start loop across subjects
-	counter=0 && status=()
-	for SUBJECT in ${SUBJECTS[@]}; do
-		printf "\r%s💤  %d/%d -- Analyzing Reconstruction Stats" "$(tput el)" $((counter + 1)) ${#SUBJECTS[*]}
-		if [ "$(echo ${RUNNINGSUBJECTS[*]} | grep -oE ${SUBJECT})" ]; then
-			status+=('running')
-			hname+=("$(grep "HOST" ${SUBJECTS_DIR}/${SUBJECT}/scripts/IsRunning* | sed 's/HOST //g' | sed 's/.local//g')")
-			tstart="$(tail -n 1 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | sed "s|#@#|⦿|g"  | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)"
+	counter=0
+	# check for subject input
+	if [ ! "${subject}" ]
+	then
+		if [ ! "${SUBJECTS[@]}" ]
+		then
+			# find finished subjects and create global var if not already existing
+			# -- only convert finished subjects`
+			echo 'check again'
+			surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject=${SUBJECTS[@]}	
+		else
+			# otherwise just use existing global variable and run serially
+			local subject=${SUBJECTS[@]}
+		fi
+	fi	
+	# support for serial processing
+	for s in ${subject}; do
+		# Calculate time spent on current recon stage for active jobs
+		if [ "$(echo ${RUNNINGSUBJECTS[*]} | grep -oE ${s})" ]
+		then
+			declare -g status+=('running')
+			declare -g hname+=("$(grep "HOST" ${SUBJECTS_DIR}/${s}/scripts/IsRunning* | sed 's/HOST //g' | sed 's/.local//g')")
+			tstart="$(tail -n 1 ${SUBJECTS_DIR}/${s}/scripts/recon-all-status.log | sed "s|#@#|⦿|g"  | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${s}/scripts/recon-all-status.log | tail -n 1)"
 			if [ "$(echo ${tstart} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ]; then
 				tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s') && trun=$((tnow-tstart))	
-				runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
+				declare -g runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
 			else
-				runtime+=("$(echo nan)")
+				declare -g runtime+=("$(echo nan)")
 			fi
 		fi
-		if [ "$(echo ${FINISHEDSUBJECTS[*]} | grep -oE ${SUBJECT})" ]; then
-			status+=('done')
-			hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
-			tstart="$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')"
- 			tdone="$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | tail -n 1)"
+		# calculate total time spent running
+		if [ "$(echo ${FINISHEDSUBJECTS[*]} | grep -oE ${s})" ]
+		then
+			if [ "$(echo ${RERUNSUB[*]} | grep -oE ${s})" ]
+			then
+				status+=('incomplete')
+			elif [ "$(echo ${COMPLETESUB[*]} | grep -oE ${s})" ]
+			then
+				status+=('complete')
+			else
+				status+=('success')
+			fi			
+			declare -g hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+			tstart="$(tail -n 5 ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | grep -B 0 "Started at" | head -n 1 | sed 's/Started at //g')"
+ 			tdone="$(tail -n 5 ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | grep -B 0 "finished without error" | sed 's|\\n| |g' | egrep -o '[A-Z][a-z]{1,2}.[A-Z][a-z]{1,2}.{1,2}[1-9]{1,2}.{1,2}[0-2][0-9]:[0-9][0-9]:[0-9][0-9].[A-Z]{1,3}.[0-9]{2,4}' ${SUBJECTS_DIR}/${s}/scripts/recon-all-status.log | tail -n 1)"
 			if [ "$(echo ${tstart} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ] && [ "$(echo ${tdone} | egrep '\d{1,2}:\d{1,2}:\d{1,2}')" ]; then
 				tstart=$(date -d "${tstart}" '+%s') && tdone=$(date -d "${tdone}" '+%s') && trun=$((tdone-tstart))
-				runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
+				declare -g runtime+=("$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))")
 			else
-				runtime+=("$(echo nan)")
+				declare -g runtime+=("$(echo nan)")
 			fi
 		fi
-		if [ $(echo ${FAILEDSUBJECTS[*]} | grep -oE ${SUBJECT}) ]; then
-			status+=('failed')
-			hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
+		if [ $(echo ${FAILEDSUBJECTS[*]} | grep -oE ${s}) ]; then
+			declare -g status+=('failed')
+			declare -g hname+=("$(grep "hostname" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -1 | awk '{print $NF}' | sed 's/.local//')")
 			## TODO - is there anyway to figure out how long recon was running before failure? there is no start time anywhere?
-			runtime+=("$(echo nan)")
+			declare -g runtime+=("$(echo nan)")
 		fi
 		# get last reported recon status
-		reconstatus+=("$(tail -n 5 ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')") 
+		declare -g reconstatus+=("$(tail -n 5 ${SUBJECTS_DIR}/${s}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')") 			
 		# Count up the number of brainmask edits
-		# printf "\r%s✏️  📊  %d/%d -- Compiling Edits" "$(tput el)" $counter ${#SUBJECTS[*]} && surfergems_subject-edits ${SUBJECT}
-		bmedits+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}'))
-		wmerased+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}'))
-		wmfilled+=($(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}'))		
+		# printf "\r%s✏️  📊  %d/%d -- Compiling Edits" "$(tput el)" $counter ${#SUBJECTS[*]} && surfergems_subject_edits ${s}
+		declare -g bmedits+=($(cat ${SUBJECTS_DIR}/${s}/stats/bm.erase.dat | awk '{print $1}'))
+		declare -g wmerased+=($(cat ${SUBJECTS_DIR}/${s}/stats/wm.erase.dat | awk '{print $1}'))
+		declare -g wmfilled+=($(cat ${SUBJECTS_DIR}/${s}/stats/wm.fill.dat | awk '{print $1}'))		
 		# get talairach quality assurance
-		talqa+=("$(grep  "TalAviQA" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $NF}')")
+		declare -g talqa+=("$(grep  "TalAviQA" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -1 | awk '{print $NF}')")
 		# count defects
-		ndef+=("$(grep "defects" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -1 | awk '{print $1}')") || [ -z "${ndef[$counter]}" ]
-		leno+=($(grep -Eo "lheno =.*[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}'))
-		reno+=($(grep -Eo "rheno =.*[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${SUBJECT}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}'))
+		declare -g ndef+=("$(grep "defects" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -1 | awk '{print $1}')") || [ -z "${ndef[$counter]}" ]
+		declare -g leno+=($(grep -Eo "lheno =.*[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}'))
+		declare -g reno+=($(grep -Eo "rheno =.*[ *$]-[0-9]{1,4}" ${SUBJECTS_DIR}/${s}/scripts/recon-all.log | tail -n 1 | awk '{print $NF}'))
 		# Calculate CNR
-		printf "\r%s✏️  📊  %d/%d -- Calculating CNR" "$(tput el)" ${counter} ${#SUBJECTS[*]}
-		bcnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/orig/001.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
-		acnr+=("$(mri_cnr ${SUBJECTS_DIR}/${SUBJECT}/surf ${SUBJECT}/mri/T1.mgz 2> /dev/null | tail -1 | awk '{print $NF}')")
+		# printf "\r%s✏️  📊  %d/%d -- Calculating CNR" $(tput el) ${counter} ${#SUBJECTS[*]}
+		declare -g bcnr+=("$(${FREESURFER_HOME}/bin/mri_cnr ${SUBJECTS_DIR}/${s}/surf ${s}/mri/orig/001.mgz | tail -1 | awk '{print $NF}')")
+		declare -g acnr+=("$(${FREESURFER_HOME}/bin/mri_cnr ${SUBJECTS_DIR}/${s}/surf ${s}/mri/T1.mgz | tail -1 | awk '{print $NF}')")
 		# set nans for stats with no vals
 		[ ! "${hname[$counter]}" ] && hname[$counter]=nan
 		[ ! "${runtime[$counter]}" ] && runtime[$counter]=nan
@@ -431,61 +499,563 @@ function surfergems_stats(){
 		#
 		((counter++))
 	done
+	declare -g reconstatus
+	return 0
 }
+export -f surfergems_stats_calc
+####################################################################################################################
 ### DEFINE FUNCTION
-# create summary statistic files
+#   create summary statistic files
+####################################################################################################################
 function surfergems_morph_stats(){
-	[ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ] && surfergems_status
-	[ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	[ ! "${SUBJECTS}" ] && surfergems_status && SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
-	printf "\r%s✏️  📊  -- Calculating Volume and Surface Statistics" "$(tput el)" 
-	## Print volume (mm^3) information
-	${FREESURFER_HOME}/asegstats2table --subjects ${SUBJECTS} --tablefile ${SUBJECTS_DIR}/recon-volume-stats.txt -m 'volume' --skip
-	## Print mean intensity statistics
-	${FREESURFER_HOME}/asegstats2table --subjects ${SUBJECTS} --tablefile ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt -m 'mean' --skip
-	## Print std intensity statistics
-	${FREESURFER_HOME}/asegstats2table --subjects ${SUBJECTS} --tablefile ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt -m 'std' --skip
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_morph_stats $@"	
+	local subjects="$@"
+	[ ! ${measures} ] && local measures=${MEASURES[@]}
+	[ ! ${atlas} ] && local atlas=${ATLAS[@]}	
+	if [ ! "${subjects}" ]; then
+		if [ ! ${STATUSCHECK} ] && [ ! "${SUBJECTS}" ]; then
+			surfergems_status
+			declare -g SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")
+		fi
+		local subjects=$(echo ${SUBJECTS[@]})
+	fi
+	subjects=$(echo ${subjects} | sed "s|${AVERAGENAME}||g")
 	## Print surface area statistics
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'area' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-area-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'area' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-area-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'vol' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-vol-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'vol' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-vol-stats.txt --skip		
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'thickness' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-thick-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'thickness' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-thick-stats.txt --skip		
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'thicknessstd' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-thickstd-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'thicknessstd' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-thickstd-stats.txt --skip		
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'meancurv' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-mcurv-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'meancurv' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-mcurv-stats.txt --skip			
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'gauscurv' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-gauscurv-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'gauscurv' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-gauscurv-stats.txt --skip				
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'foldind' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-foldind-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'foldind' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-foldind-stats.txt --skip				
-	${FREESURFER_HOME}/aparcstats2table --hemi lh -m 'curvind' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-lh-curvind-stats.txt --skip	
-	${FREESURFER_HOME}/aparcstats2table --hemi rh -m 'curvind' --subjects ${SUBJECTS} -p 'aparc.a2009s' -t $SUBJECTS_DIR/recon-rh-curvind-stats.txt --skip					
+	if [ "${subjects}" ]
+	then
+		for atla in ${atlas}; do
+			if [ ${atla} = 'aseg' ]; then
+				## Print volume (mm^3) information
+				if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/recon-volume-stats.txt ]
+				then
+					if ${FREESURFER_HOME}/bin/asegstats2table --subjects ${subjects} --tablefile ${SUBJECTS_DIR}/recon-volume-stats.txt -m 'volume' --skip >&4
+					then
+						>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY} ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-volume-stats.txt -m 'volume' --skip${NC}\n"
+					else
+						>&2 printf "${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-volume-stats.txt -m 'volume' --skip${NC}\n"
+					fi
+				else
+					>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/recon-volume-stats.txt${NC}"
+				fi
+				if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt ]
+				then
+					if ${FREESURFER_HOME}/bin/asegstats2table --subjects ${subjects} --tablefile ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt -m 'mean' --skip >&4
+					then
+						>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY} ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt -m 'mean' --skip${NC}\n"
+					else
+						>&2 printf "${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt -m 'mean' --skip${NC}\n"
+					fi
+				else
+					>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/recon-mean-intensity-stats.txt${NC}"						
+				fi
+				if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/recon-std-intensity-stats.txt ]
+				then
+					if ${FREESURFER_HOME}/bin/asegstats2table --subjects ${subjects} --tablefile ${SUBJECTS_DIR}/recon-std-intensity-stats.txt -m 'std' --skip >&4
+					then
+						>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY} ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-std-intensity-stats.txt -m 'std' --skip${NC}\n"
+					else
+						>&2 printf "${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/asegstats2table --subjects ${s} --tablefile ${SUBJECTS_DIR}/recon-std-intensity-stats.txt -m 'std' --skip${NC}\n"
+					fi
+				else
+					>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/recon-std-intensity-stats.txt${NC}"						
+				fi							
+			elif [ ${atla} = 'aparc' ] || [ ${atla} = 'aparc.a2009s' ]; then
+				## Print surface (vertex) statistics 
+				for measure in ${measures}; do
+					if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt ]
+					then						
+						if ${FREESURFER_HOME}/bin/aparcstats2table --hemi lh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt --skip >&4
+						then
+							>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY} ${FREESURFER_HOME}/bin/aparcstats2table --hemi lh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt --skip${NC}\n"
+						else
+							>&2 printf "${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/aparcstats2table --hemi lh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt --skip${NC}\n"
+						fi
+					else						
+						>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt${NC}"						
+					fi
+					if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/recon-rh-${measure}-${atla}-stats.txt ]
+					then																					
+						if ${FREESURFER_HOME}/bin/aparcstats2table --hemi rh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-rh-${measure}-${atla}-stats.txt --skip >&4
+						then
+							>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY} ${FREESURFER_HOME}/bin/aparcstats2table --hemi rh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt --skip${NC}\n"
+						else
+							>&2 printf "${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/aparcstats2table --hemi rh -m ${measure} --subjects ${subjects} -p ${atla} -t ${SUBJECTS_DIR}/recon-lh-${measure}-${atla}-stats.txt --skip${NC}\n"
+						fi
+					else						
+						>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/recon-rh-${measure}-${atla}-stats.txt${NC}"						
+					fi								
+				done
+			fi
+		done
+	else
+		return 1
+	fi
 }
-### DEFINE FUNCTION
-# calculate CNR
-function surfergems_subject-cnr(){
-echo ''
-}
-### DEFINE FUNCTION
-function surfergems_subject-status(){
-	# get last reported recon status
-	echo "$(tail -n 5 ${SUBJECTS_DIR}/${1}/scripts/recon-all-status.log | grep "#@#" | tail -n 1 | sed "s|#@#||g" | awk '{i = 6; for (--i; i>=0; i--){$(NF-i)=""}print}' | awk '{{$NF=""}print}')"
-}
-## TODO get volume/morph stats and print to separate table
-##
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######### PRINTING TO STDOUT
-#########
-#########
-################################################################################################################
-################################################################################################################
+export -f surfergems_morph_stats
+####################################################################################################################
 ## DEFINE FUNCTION
-### Print verbose status
+#  print stats to table
+#  TODO overwrite check?
+####################################################################################################################
+function surfergems_stats_table(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_stats_table $@"	
+	counter=0
+	for SUBJECT in ${SUBJECTS[@]}; do
+		declare -g TABLE+=($(echo "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${wmfilled[$counter]}\t${wmerased[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"))
+		((counter++))
+	done
+	# echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
+	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/recon-statistics.txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/recon-statistics.txt\n'
+	# [ ${VERBOSE} ] && cat ${SUBJECTS_DIR}/recon-statistics.txt | column -s $'\t' -t
+	return 0
+}
+export -f surfergems_stats_table
+####################################################################################################################
+### DEFINE FUNCTION
+#   calculate CNR
+####################################################################################################################
+## TODO 
+function surfergems_subject_cnr(){
+>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_subject_cnr $@"	
+echo 'work in progress'
+}
+export -f surfergems_subject_cnr
+####################################################################################################################
+### DEFINE FUNCTION
+#   convert files
+####################################################################################################################
+function surfergems_convert(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_convert $@\r"
+	local convert=${1} && shift
+	local iext=${1} && shift
+	[ "${iext}" = 'null' ] && local iext=''
+	local oext=${1} && shift 
+	local subject=${1} && shift
+	local files=("$@")
+	local counter=0
+	# populate with default files if no user specification
+	[ "${CONVERTVOL}" ] && [ -z ${files} ] && local files=("T1" "brainmask" "wm" "aseg" "aparc+aseg" "aparc.DKTatlas+aseg" "aparc.a2009s+aseg" "wmparc")	
+	[ "${CONVERTSURF}" ] && [ -z ${files} ] && local files=("lh.white" "lh.pial" "lh.inflated" "rh.white" "rh.pial" "rh.inflated")
+	# check for subject input
+	if [ ! ${subject} ]; then
+		if [ ! ${SUBJECTS} ]; then
+			# find finished subjects and create global var if not already existing
+			# -- only convert finished subjects`
+			surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject=${SUBJECTS[@]}			
+		else
+			# otherwise just use existing global variable
+			local subject=${SUBJECTS[@]}
+		fi
+	fi
+	# support for serial processing
+	for s in ${subject}; do 
+		for f in ${files[@]}; do
+			[ ${iext} ] && [ ! "$(echo ${iext} | grep '^\.')" ] && iext=".${iext}"
+			[ ! "$(echo ${oext} | grep '^\.')" ] && oext=".${oext}"
+			local filepath=$(find ${SUBJECTS_DIR}/${s} \( ! -regex '.*/\..*' \)  -name "${f}${iext}")
+			# printf "\r %s \r${BLUE} 🧠 Converting ${GREY}${s} ${NC}:: ${f}${iext} ⇢ ${f}${oext}\r" $(tput el)
+			if [ ! -z  "${filepath}" ]; then			
+				if [ ! -z "${OVERWRITE}" ] || [ ! $(find ${SUBJECTS_DIR}/${s} \( ! -regex '.*/\..*' \)  -name "${f}${oext}") ]; then 
+					[ ! -z "${OVERWRITE}" ] && >&2 printf "${OVERWRITE} %s :: %s%s" ${s} ${f} ${oext}
+					if [ "${convert}" = 'vol' ]; then
+						if ${FREESURFER_HOME}/bin/mri_convert \
+															${filepath} \
+															 $(echo ${filepath} | sed "s|${iext}|${oext}|") >&4												 
+						then
+							>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  ${FREESURFER_HOME}/bin/mri_convert ${filepath} $(echo ${filepath} | sed "s|${iext}|${oext}|")${BLUE}\n"
+						else
+							>&2 printf "\r${BRED}◀︎|⁃‣ERROR${NC}  ${FREESURFER_HOME}/bin/mri_convert ${filepath} $(echo ${filepath} | sed "s|${iext}|${oext}|") FAILED\n"
+							return 1
+						fi
+					elif [ "${convert}" = 'surf' ]; then
+						if ${FREESURFER_HOME}/bin/mris_convert \
+															${SUBJECTS_DIR}/${s}/surf/${f}${iext} \
+															${SUBJECTS_DIR}/${s}/surf/${f}.${oext} >&4
+						then
+							>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  ${FREESURFER_HOME}/bin/mris_convert ${SUBJECTS_DIR}/${s}/surf/${f}${iext} ${SUBJECTS_DIR}/${s}/surf/${f}.${oext}\n"
+						else
+							>&2 printf "\r${BRED}◀︎|⁃‣ERROR${NC}  ${FREESURFER_HOME}/bin/mris_convert ${SUBJECTS_DIR}/${s}/surf/${f}${iext} ${SUBJECTS_DIR}/${s}/surf/${f}.${oext} FAILED\n"
+							return 1
+						fi	
+					else
+						 >&2 echo -e "${BRED}ERROR :: Unknown Conversion (Surf or Vol?)${NC}"
+						return 1
+					fi
+				else
+					>&1 echo -e "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} $(find ${SUBJECTS_DIR}/${s} \( ! -regex '.*/\..*' \)  -name "${f}${oext}")${NC}"
+				fi
+				((counter ++))
+			else
+				>&1 echo -e  "${YELLOW}◀︎|⁃‣${YELLOW}WARNING${NC} ${f}${iext} not found for ${subject}"
+				return 0
+			fi
+		done		
+	done
+	return 0
+}
+export -f surfergems_convert
+####################################################################################################################
+## DEFINE FUNCTION
+#  deface files
+#				TODO (no overwrite check?)
+####################################################################################################################
+function surfergems_deface(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_deface $@"		
+	local subject=${1} && shift
+	local iext=${1} && shift
+	local files="$@"
+	local counter=0
+	# use global variables for files if not specified
+	[ ! "${files}" ] && files=${DEFACEFILES[@]}
+	# check for subject input
+	if [ ! ${subject} ]; then
+		if [ ! ${SUBJECTS} ]; then
+			# find finished subjects and create global var if not already existing
+			# -- only convert finished subjects`
+			surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject=${SUBJECTS[@]}			
+		else
+			# otherwise just use existing global variable
+			local subject=${SUBJECTS[@]}
+		fi
+	fi	
+	for s in ${subject}; do
+		for f in ${files}; do
+			local filepath=$(find ${SUBJECTS_DIR}/${s}  -name ${f}".${iext}")
+			if [ -f ${filepath} ]; then
+				cp -vn ${filepath} $(echo ${filepath} | sed "s|.${iext}|_orig.${iext}|g") >&2
+				if ${FREESURFER_HOME}/bin/mri_deface \
+												${filepath} \
+												${SOURCEPATH}'/bin/talairach_mixed_with_skull.gca' \
+												${SOURCEPATH}'/bin/face.gca' \
+												${filepath} >&4
+				then
+					printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  ${FREESURFER_HOME}/bin/mri_deface ${filepath} ${SOURCEPATH}'/bin/talairach_mixed_with_skull.gca' ${SOURCEPATH}'/bin/face.gca' ${filepath}\n\n" >&4
+				else
+					printf "\r${BRED}◀︎|⁃‣ERROR${NC}  ${FREESURFER_HOME}/bin/mri_deface ${filepath} ${SOURCEPATH}'/bin/talairach_mixed_with_skull.gca' ${SOURCEPATH}'/bin/face.gca' ${filepath} FAILED\n" >&2
+					return 1
+				fi					
+			else
+				echo -e  "${YELLOW}◀︎|⁃‣${YELLOW}WARNING${NC} ${f}.${iext} not found for ${subject}\r" >&2
+				return 0
+			fi		
+		done
+	done
+	return 0
+}
+export -f surfergems_deface
+####################################################################################################################
+### DEFINE FUNCTION
+#   summarize subject edits
+####################################################################################################################
+function surfergems_subject_edits(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_subject_edits $@"		
+	local subject="$@"
+	local counter=0	
+	# check for subject input
+	if [ ! "${subject}" ]
+	then
+		if [ ! "${SUBJECTS[@]}" ]
+		then
+			# find finished subjects and create global var if not already existing
+			# -- only convert finished subjects`
+			surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject=${SUBJECTS[@]}	
+		else
+			# otherwise just use existing global variable and run serially
+			local subject=${SUBJECTS[@]}
+		fi
+	fi
+	# supports list for serial processing
+	for s in ${subject}; do
+		# map edits to surface
+		if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/bm.erase.mgh ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/bm.clone.mgh ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/diff.mgh ]
+		then
+			if ${FREESURFER_HOME}/bin/bmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc \
+												   --s ${s} --overwrite >&4
+			then
+				 >&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  ${FREESURFER_HOME}/bin/bmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc --s ${s} --overwrite${BLUE}\n"
+		 	else
+				 >&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/bmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc --s ${s} --overwrite FAILED${BLUE}\n"
+		 		continue
+		 	fi
+		 else
+			 >&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} brainmask edits summary files already exist${NC}"		 			 	
+		fi
+		if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/wm.erase.mgh ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/wm.fill.mgh ]; then
+			if ${FREESURFER_HOME}/bin/wmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc \
+												   --s ${s} --overwrite >&4
+			then
+				 >&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  ${FREESURFER_HOME}/bin/wmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc --s ${s} --overwrite${BLUE}\n"
+		 	else
+				 >&2 printf "\r${BRED}◀︎|⁃‣ERROR${NC}  ${FREESURFER_HOME}/bin/wmedits2surf --self --tmp ${SUBJECTS_DIR}/${s}/qc --s ${s} --overwrite FAILED${BLUE}\n"
+				 continue
+		 	fi
+		 else
+			>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} white matter mask edits summary files already exist${NC}"		 	
+		fi												   					 		
+		# convert to atlas annotation for projection on surfaces
+		if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/rh.bmedits.annot ] ; then
+			if ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/rh.bmerase.mgh \
+												  --s ${s} --ctab-auto --h rh --surf white \
+												  --o ${SUBJECTS_DIR}/${s}/qc/rh.bmedits.annot >&4
+			then
+				>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/rh.bmerase.mgh  --s ${s} --ctab-auto --h rh --surf white --o ${SUBJECTS_DIR}/${s}/qc/rh.bmedits.annot${BLUE}\n"
+		 	else
+				>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/rh.bmerase.mgh --s ${s} --ctab-auto --h rh --surf white --o ${SUBJECTS_DIR}/${s}/qc/rh.bmedits.annot FAILED${BLUE}\n"
+				 continue
+		 	fi
+		 else
+			>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/${s}/qc/rh.bmedits.annot${NC}"		 	
+		fi												   					 		
+		if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${s}/qc/lh.bmedits.annot ] ; then
+			if ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/lh.bmerase.mgh \
+												  --s ${s} --ctab-auto --h lh --surf white \
+												  --o ${SUBJECTS_DIR}/${s}/qc/lh.bmedits.annot >&4
+			then
+				 >&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/lh.bmerase.mgh --s ${s} --ctab-auto --h lh --surf white --o ${SUBJECTS_DIR}/${s}/qc/lh.bmedits.annot${BLUE}\n"		 														  	
+		 	else
+				 >&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}  ${FREESURFER_HOME}/bin/mris_seg2annot --seg ${SUBJECTS_DIR}/${s}/surf/lh.bmerase.mgh --s ${s} --ctab-auto --h lh --surf white --o ${SUBJECTS_DIR}/${s}/qc/lh.bmedits.annot FAILED${BLUE}\n"		 		
+				 continue
+		 	fi
+		 else
+			>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${GREY} ${SUBJECTS_DIR}/${s}/qc/lh.bmedits.annot${NC}"		 			 	
+		fi
+		# print out stats
+		bmerase=$(cat ${SUBJECTS_DIR}/${s}/stats/bm.erase.dat | awk '{print $1}') && wmerase=$(cat ${SUBJECTS_DIR}/${s}/stats/wm.erase.dat | awk '{print $1}')  && wmfill=$(cat ${SUBJECTS_DIR}/${s}/stats/wm.fill.dat | awk '{print $1}')
+		>&4 printf "\n${GREY}✏️ Edit Summary Stats:${NC}\n\t# Erased voxels in brainmask: %d\n" ${bmerase}
+		>&4 printf "\t# Erased voxels in white matter mask: %d\n" ${wmerase}
+		>&4 printf "\t# Filled voxels in white matter mask: %d\n" ${wmfill}
+		((counter++))
+	done
+	return 0
+}
+export -f surfergems_subject_edits
+####################################################################################################################
+### DEFINE FUNCTION
+#   project summary of edits to average space
+####################################################################################################################
+##  TODO check for existence of files before trying to run group summary compilation
+function surfergems_group_edits_getsubjectedits(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_group_edits_getsubjectedits $@"		
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh ]
+	then
+		# apply transform
+		if ${FREESURFER_HOME}/bin/mri_vol2vol \
+						--mov ${SUBJECTS_DIR}/${1}/qc/bm.erase.mgh \
+	 					--o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh \
+	 					--reg ${SUBJECTS_DIR}/${1}/mri/transforms/registration-to-${AVERAGENAME}.dat \
+	 					--targ ${SUBJECTS_DIR}/${AVERAGENAME}/mri/brainmask.mgz
+	 	then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mri_vol2vol --mov ${SUBJECTS_DIR}/${1}/qc/bm.erase.mgh --o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh --reg ${SUBJECTS_DIR}/${1}/mri/transforms/registration-to-${AVERAGENAME}.dat --targ ${SUBJECTS_DIR}/${AVERAGENAME}/mri/brainmask.mgz ${BLUE}\n"
+	 	else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mri_vol2vol --mov ${SUBJECTS_DIR}/${1}/qc/bm.erase.mgh --o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh --reg ${SUBJECTS_DIR}/${1}/mri/transforms/registration-to-${AVERAGENAME}.dat --targ ${SUBJECTS_DIR}/${AVERAGENAME}/mri/brainmask.mgz ${BLUE}\n"
+	 	fi
+		# binarize transformed edits 
+	 	if ${FREESURFER_HOME}/bin/mri_binarize \
+	 					--min 1 \
+						--i ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh \
+						--o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mri_binarize --min 1 --i ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh ${BLUE} --o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh\n"
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mri_binarize --min 1 --i ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh ${BLUE} --o ${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh\n"
+		fi	 	
+	 else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${1}/qc/bm.erase.${AVERAGENAME}-space.mgh${NC}"
+	fi		 	
+}
+export -f surfergems_group_edits_getsubjectedits
+####################################################################################################################
+### DEFINE FUNCTION
+#   project summary of edits to average space
+####################################################################################################################
+##  TODO check for existence of files before trying to run group summary compilation
+function surfergems_group_edits(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_group_edits $@"		
+	if [ -z "${SUBJECTS}" ]
+	then
+		# find finished subjects and create global var if not already existing
+		# -- only convert finished subjects`
+		surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}") && local subject=${SUBJECTS[@]}
+	fi	
+	# compute average and register subjects to average
+	surfergems_makeavg >&4
+	>&4 printf "\r${YELLOW}❍ applying transform on edits made to each subject${NC}\r"		
+	parallel -k --link surfergems_group_edits_getsubjectedits {} \
+						::: $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g") \
+						>&4 >(zenity --progress --pulsate --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Averaging Subjects" --text="Applying Registration to ${AVERAGENAME}" --width=300 --height=100)
+	# compute sum across subjects
+	local files=($(find ${SUBJECTS_DIR}/ -name "bm.erase.${AVERAGENAME}-space.mgh"))
+	if [ ! "$(echo ${files[@]})" ]
+	then
+		 >&2 echo -e "\r\r${BRED}ERROR: cannot find bm.erase.${AVERAGENAME}-space.mgh in ${SUBJECTS_DIR}${NC}"
+		return 1
+	fi
+	[ ! -d ${SUBJECTS_DIR}/${AVERAGENAME}/qc ] && mkdir -vp ${SUBJECTS_DIR}/${AVERAGENAME}/qc >&4
+	## TODO - figure out weird bug where summation does not work with a '.sum' in filename instead of '-sum'
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh ]
+	then	
+		if ${FREESURFER_HOME}/bin/mri_concat \
+						${files[@]} \
+						--sum --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mri_concat ${files[@]} --sum --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mri_concat ${files[@]} --sum --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh${NC}"		
+	fi
+	# create probability map of edits
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh ]
+	then
+		if ${FREESURFER_HOME}/bin/fscalc ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh \
+						div ${#files[@]} --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/fscalc ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh div ${#files[@]} --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/fscalc ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-sum.mgh div ${#files[@]} --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh${NC}"		
+	fi
+	# convert to rh surface 
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh ]
+	then
+		if ${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh \
+										--o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh \
+										--interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 \
+										--regheader average --hemi rh >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh --interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 --regheader average --hemi rh\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh --interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 --regheader average --hemi rh\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh${NC}"		
+	fi
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.gii ]
+	then
+		if ${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh \
+										${SUBJECTS_DIR}/${AVERAGENAME}/surf/rh.white \
+										${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.gii >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh ${SUBJECTS_DIR}/${AVERAGENAME}/surf/rh.white ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.gii\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh ${SUBJECTS_DIR}/${AVERAGENAME}/surf/rh.white ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.gii\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.gii${NC}"		
+	fi
+    # convert lh to surface
+    if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedits-brainmask.mgh ]
+    then    	
+    	if ${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh \
+    											--o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.mgh \
+												--interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 \
+												--regheader average --hemi lh >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh --interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 --regheader average --hemi lh\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mri_vol2surf --src ${SUBJECTS_DIR}/${AVERAGENAME}/qc/bm.erase-prob.mgh --o ${SUBJECTS_DIR}/${AVERAGENAME}/qc/rh.pedit-brainmask.mgh --interp nearest --projfrac-max 0 5 .2 --fwhm 2.5 --regheader average --hemi lh\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.mgh${NC}"		
+	fi
+	# convert to gifti
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.gii ]
+	then
+		if ${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.mgh \
+												${SUBJECTS_DIR}/${AVERAGENAME}/surf/lh.white \
+												${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.gii >&4
+		then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.mgh ${SUBJECTS_DIR}/${AVERAGENAME}/surf/lh.white ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.gii\n" 				
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${GREY}${FREESURFER_HOME}/bin/mris_convert -c ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.mgh ${SUBJECTS_DIR}/${AVERAGENAME}/surf/lh.white ${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.gii\n"			
+			return 1
+		fi
+	else
+		>&1 printf "${BLUE}◀︎|⁃‣NO OVERWRITE - FILE EXISTS${NC} ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}/qc/lh.pedit-brainmask.gii${NC}"		
+	fi
+}
+export -f surfergems_group_edits
+####################################################################################################################
+### DEFINE FUNCTION
+#   register subject to average
+####################################################################################################################
+function surfergems_subject_registertoaverage(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_registertoaverage $@"		
+	local subject=${1}
+	local averagename=${2}
+	if [ "${OVERWRITE}" ] || [ ! -f ${SUBJECTS_DIR}/${subject}/mri/transforms/registration-to-${averagename}.dat ]; then
+		if ${FREESURFER_HOME}/bin/fslregister --s ${averagename} \
+										  --mov ${SUBJECTS_DIR}/${subject}/mri/brain.mgz \
+					   				  	  --reg ${SUBJECTS_DIR}/${subject}/mri/transforms/registration-to-${averagename}.dat \
+					   				  	  --dof 12; then
+			>&1 printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${FREESURFER_HOME}/bin/fslregister --s ${averagename} --mov ${SUBJECTS_DIR}/${subject}/mri/brain.mgz --reg ${SUBJECTS_DIR}/${subject}/mri/transforms/registration-to-${averagename}.dat --dof 12\n"
+		else
+			>&2 echo -e "${BRED}\rERROR: fslregister ${subject} to ${averagename} failed ${NC}"
+			return 1
+		fi					
+	else
+		>&1 echo -e "${BLUE}◀︎|⁃‣NO OVERWRITE - AVERAGE SUBJECT EXISTS :: ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}${NC}"				
+	fi
+	return 0
+}
+export -f surfergems_subject_registertoaverage
+####################################################################################################################
+### DEFINE FUNCTION
+#   make average volumes/surfaces
+####################################################################################################################
+function surfergems_makeavg(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_makeavg $@"		
+	## TODO 
+	# update this so that it checks if average subject reports recon status = done
+	if [ "${OVERWRITE}" ] || [ ! -d ${SUBJECTS_DIR}/${AVERAGENAME} ]
+	then
+		[ "${OVERWRITE}" ] && [ -d ${SUBJECTS_DIR}/${AVERAGENAME} ] && rm -vr ${SUBJECTS_DIR}/${AVERAGENAME} >&2		
+			if ${FREESURFER_HOME}/bin/make_average_subject --subjects $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g") \
+														--sd ${SUBJECTS_DIR} \
+														--out ${AVERAGENAME} >&4
+			then
+				>&4 printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${FREESURFER_HOME}/bin/make_average_subject ${filepath} --subjects $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g") --sd ${SUBJECTS_DIR} --out ${AVERAGENAME}\n"
+			else
+				>&2 printf "\r${BRED}◀︎|⁃‣ERROR${NC}  ${FREESURFER_HOME}/bin/make_average_subject ${filepath} --subjects $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g") --sd ${SUBJECTS_DIR} --out ${AVERAGENAME} FAILED\n"
+				return 1
+			fi
+	else
+		echo -e "${BLUE}◀︎|⁃‣NO OVERWRITE - AVERAGE SUBJECT EXISTS :: ${GREY}${SUBJECTS_DIR}/${AVERAGENAME}${NC}"		
+	fi
+	# compute registration for all subjects to average
+	if [ "$(echo "${SUBJECTS[@]}" | sed "s|${AVERAGENAME}||g")" ]
+	then
+		>&4 printf "%s\r${YELLOW}❍ registering subjects to ${SUBJECTS_DIR}/${AVERAGENAME}${NC}"
+		if parallel -k --link --bar surfergems_subject_registertoaverage {} ${AVERAGENAME} \
+							::: $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g") \
+							>&4 >(zenity --progress --pulsate --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Average Subject" --text="Affine Registration of all Subjects to ${AVERAGENAME}" --width=300 --height=100)
+		then
+			>&4 printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${surfergems_subject_registertoaverage} {} ${AVERAGENAME} ::: $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g")\n"
+		else
+			>&2 printf "\r${BRED}◀︎|⁃‣ERROR${NC} ${surfergems_subject_registertoaverage} {} ${AVERAGENAME} ::: $(echo ${SUBJECTS[@]} | sed "s|${AVERAGENAME}||g")\n"
+		fi
+	fi
+	return 0
+}
+export -f surfergems_makeavg
+####################################################################################################################
+#
+# PRINTING TO STDOUT
+#
+####################################################################################################################
+### DEFINE FUNCTION
+#   print verbose status
+####################################################################################################################
 function surfergems_printstatus_verbose(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_printstatus_verbose $@"			
 	if [ "${RUNNINGSUBJECTS[*]}" ]; then
 		echo 'Active Job Status Details ::'		
 		if [ ${VERBOSE} ]; then 
@@ -507,26 +1077,51 @@ function surfergems_printstatus_verbose(){
 			for SUBJECT in ${FAILEDSUBJECTS[@]}; do
 				echo -e "\n${BLUE}${SUBJECT}\n${BRED}$(tail -n 1 $(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'recon-all-status.log'))${GGREY}\n$(tail -n 8 $(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \) -name 'recon-all.log'))${NC}\n"
 			done		
-	fi		
+	fi	
+	return 0	
 }
+export -f surfergems_printstatus_verbose
+####################################################################################################################
 ## DEFINE FUNCTION
-### Print status
+#  print status
+####################################################################################################################
 function surfergems_printstatus(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_printstatus $@"				
+	# if [ -z "${RUNNINGSUBJECTS[*]}" ] && [ -z "${FINISHEDSUBJECTS[*]}" ] && [ -z "${FAILEDSUBJECTS[*]}" ]; then
+	# 	if [  "$(echo "${STATUS[*]}" | grep 'failed')" ]; then
+	# 		echo -e "🙌  No Failed Jobs! All Participants Report Successful Completion\n\t..give yourself a pat on the back (hint: 🍩)"
+	# 	fi
+	# 	if [  "$(echo "${STATUS[*]}" | grep 'incomplete')" ]; then
+	# 		echo -e "${YELLOW}★ ${GREEN}Complete Dataset File Manifest${NC}"
+	# 	fi		
+	# 	if [ "$(echo "${STATUS[*]}" | grep 'success')" ]; then
+	# 		echo -e "∅  No Successful Jobs Detected\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
+	# 	fi
+	# 	if [ "$(echo "${STATUS[*]}" | grep 'done')" ]; then
+	# 		echo -e "∅  No Complete Manifests Found.\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
+	# 	fi		
+	# 	if [ "$(echo "${STATUS[*]}" | grep 'active')" ]; then
+	# 		echo -e "∅  No Active Jobs Detected\n\t→ check SUBJECTS_DIR is set correctly and populated with data\n\t\n...exiting\n"
+	# 	fi
+	# fi	
 	# print status of active jobs
-	## TODO modify job submission script to write file to SUBJECTS_DIR/SUBJECT/script with time recon started in SGE
+	# if [ "${COMPLETESUB[*]}" ]; then
 	if [ "${RUNNINGSUBJECTS[*]}" ]; then
 		local counter=0 && local status=""
 		for SUBJECT in ${RUNNINGSUBJECTS[@]}; do
 			tstart=${RUNNINGTIME[$counter]} && tnow=$(date) && tstart=$(date -d "${tstart}" '+%s') && tnow=$(date -d "${tnow}" '+%s')
 			trun=$((tnow-tstart)) && runtime=$(printf '%02d:%02d:%02d\n' $(($trun / 3600)) $(($trun % 3600 / 60)) $(($trun % 60)))
-			status+=$(echo "\n${GREY}${RUNNINGHOSTS[$counter]}\t${BLUE}${SUBJECT}\t${GREY}${RUNNINGSTATUS[$counter]}\t${GREY}${runtime}${NC}")
+			tid=$(echo ${RUNNINGID[@]} | grep ${SUBJECT} | awk '{print $NF}')
+			status+=$(echo "\n${GREY}${RUNNINGHOSTS[$counter]}\t${BLUE}${SUBJECT}\t${BLUE}${tid}\t${GREY}${RUNNINGSTATUS[$counter]}\t${GREY}${runtime}${NC}")
 			((counter++))
 		done
 		status=$(echo -e ${status} | sort -k1 -r)		
-		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}STATUS\t${LRED}TIME-ELAPSED${NC}\n")
+		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\tPID${GGREY}\t${GGREY}STATUS\t${LRED}TIME-ELAPSED${NC}\n")
 		echo -e "🏃  ${GREY}${#RUNNINGSUBJECTS[@]} Current Active Jobs Running On Hosts :: ${NC}\n"
 		[ $(which qstat) ] && printf  "    Remaining Subjects ::: %d\n\n" $(qstat -s p | grep 'qw' | wc -l)
 		echo -e "${header}\n${status}" |  column -s $'\t' -t  && echo -e '\n' &&  [ $(which qhost) ] && qhost | sed '3d;' && echo -e '\n See more information by typing qstat -f -ne\n'
+	else
+		echo -e "${GREY}◀︎⁃${RED}∅ ${GREY}NO ACTIVE JOBS${NC}" >&2		
 	fi
 	# print status of finished jobs
 	if [ "${FINISHEDSUBJECTS[*]}" ]; then
@@ -545,7 +1140,9 @@ function surfergems_printstatus(){
 		[ ${FILECHECK} ] && local string=DATASET-MANIFEST
 		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}COMPLETION-TIME\t${GGREY}TIME-ELAPSED\t${string}\n")
 		echo -e "\n✅ ${GREEN}${#FINISHEDSUBJECTS[@]} Completed Jobs :: ${NC}\n"
-		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
+		echo -e "${header}\n${status}" | column -s $'\t' -t
+	else
+		echo -e "${GREY}◀︎⁃${RED}∅ ${GREY}NO COMPLETED JOBS${NC}" >&2		
 	fi
 	# print status of failed subjects
 	if [ "${FAILEDSUBJECTS[*]}" ]; then
@@ -558,130 +1155,106 @@ function surfergems_printstatus(){
 		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}RECON-STEP\t${GGREY}TIME-FAILED\n")
 		echo -e "🔥 ${YELLOW}${#FAILEDSUBJECTS[@]} Failed Jobs${NC} :: \n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
+	else
+		echo -e "${GREY}◀︎⁃${RED}∅ ${GREY}NO FAILED JOBS${NC}" >&2		
 	fi
-	[ "$(echo "${RERUNSUB[@]}")" ] && echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC}" && printf "${FREESURFER_HOME}/recon-all -s %s -make all\n" ${RERUNSUB[@]}
-	[ "$(echo "${COMPLETESUB[@]}")" ] && echo -e "\n${GREEN}Complete file manifests (ready for analysis):${NC}" && printf "${BLUE}%s${NC} " ${COMPLETESUB[@]}
+	if [ "${RERUNSUB[@]}" ]; then 
+		echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC} $(printf "${FREESURFER_HOME}/recon-all -s %s -make all\n" ${RERUNSUB[@]})"
+		echo -e "\n${YELLOW}RERUN LIST:${NC} $(printf '%s ' ${RERUNSUB[@]})" >&2
+	fi
+	if [ "$(echo ${COMPLETESUB[@]})" ]; then
+		echo -e "\n${GREEN}Complete file manifests (ready for analysis):${NC} $(printf "${BLUE}%s${NC} " ${COMPLETESUB[@]})"
+	fi
+	[ "${VERBOSE}" ] && surfergems_printstatus_verbose	
+	return 0
 }
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######### PRINTING TO FILE
-#########
-#########
-################################################################################################################
-## DEFINE FUNCTION
-### Print stats to table
-function surfergems_table(){
-	local counter=0
-	echo -e '\r\n'
-	echo ${SUBJECTS}
-	for SUBJECT in ${SUBJECTS[@]}; do
-		printf "📝  $counter/${#SUBJECTS[*]} -- Building Table\r"
-		TABLE+=($(echo "${SUBJECT}\t${hname[$counter]}\t${status[$counter]}\t${runtime[$counter]}\t${reconstatus[$counter]}\t${bmedits[$counter]}\t${wmfilled[$counter]}\t${wmerased[$counter]}\t${talqa[$counter]}\t${bcnr[$counter]}\t${acnr[$counter]}\t${ndef[$counter]}\t${leno[$counter]}\t${reno[$counter]}\n"))
-		((counter++))
-	done
-	# echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/check-recons-report.txt\n'
-	echo -e "${TABLE[@]}" > ${SUBJECTS_DIR}/recon-statistics.txt && echo -e '\n 💾 Table written to'${SUBJECTS_DIR}'/recon-statistics.txt\n'
-	# cat ${SUBJECTS_DIR}/check-recons-report-$(date '+%H:%M:%S|%Y-%m-%d').txt | column -s $'\t' -t
-	cat ${SUBJECTS_DIR}/recon-statistics.txt | column -s $'\t' -t
-}
-## DEFINE FUNCTION
-### Convert file into NIFTI
-function surfergems_convert.NIFTI(){
-	## TODO fix input...
-	local files=${1}
-	local iext=${2}
-	local oext=${3}
-	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	echo -e '\nConverting Subject(s)...' && printf '\t👤 %s\n' $(echo ${SUBJECTS[@]}) && echo -e '\nVolumes Queued for Conversion to NII.GZ...' && printf '\t🧠  %s\n' $(echo ${files}) && echo ''
-	local counter=0
-	for SUBJECT in ${SUBJECTS[@]}; do
-		printf "\r%s💤  %d/%d -- Converting ${SUBJECT}..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
-		found=""
-		for search in ${files}; do
-			found+="$(find ${SUBJECTS_DIR}/${SUBJECT} \( ! -regex '.*/\..*' \)  -name "${search}.${iext}")"
-		done
-		parallel -k --link mri_convert {1} 2&>1 /dev/null ::: $(echo "${found}")
-		((counter++))
-	done	
-}
-## DEFINE FUNCTION
-### Convert file into GIFTI
-function surfergems_convert.GIFTI(){
-	local files=${1}
-	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	echo -e '\nConverting Subject(s)...' && printf '\t👤 %s\n' $(echo ${SUBJECTS[@]}) && echo -e '\nSurfaces Queued for Conversion to GII...' && printf '\t🏄‍♂️ %s\n' $(echo ${files}) && echo ''	
-	# [ ! "${EXISTS}" ] && surfergems_files
-	counter=0
-	for SUBJECT in ${SUBJECTS[@]}; do
-			printf "\r%s💤  %d/%d -- Converting ${SUBJECT}..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
-			parallel -k --link mris_convert ${SUBJECTS_DIR}/${SUBJECT}/surf/{} ${SUBJECTS_DIR}/${SUBJECT}/surf/{}.gii  2&>1 /dev/null ::: $(echo "${SURFs}")
-			((counter++))
-	done	
-}
-## DEFINE FUNCTION
-### Deface files
-function surfergems_deface(){
-	echo -e '\nAnonymizing Subject(s)...'
-	printf '\t👤 %s\n' $(echo ${SUBJECTS[@]})	
-	echo -e '\nImages to be Anonymized...'
-	printf '\t🧠 %s\n' $(echo ${DEFACEFILES[@]})
-	counter=0
-	for SUBJECT in ${SUBJECTS[@]}; do
-		for defacefile in ${DEFACEFILES[@]}; do
-			printf "\r%s💤  %d/%d -- Anonymizing ${SUBJECT} ${defacefile}.mgz ..." "$(tput el)" $((counter + 1)) ${#SUBJECTS[@]}
-			parallel -k --link --bar mri_deface {} ${SOURCEPATH}/bin/'talairach_mixed_with_skull.gca ' ${SOURCEPATH}/bin/face.gca {}  2&>1 /dev/null ::: $(find ${SUBJECTS_DIR}/${SUBJECT}  -name ${defacefile}'.mgz')
-		done
-		((counter++))
-	done
-	echo -e '\nDefacing of Images done!'
-}
+# export function out of subshell (allows multiple instances for parallelization)
+export -f surfergems_printstatus
+####################################################################################################################
+#
+# WEB REPORT 
+#
+####################################################################################################################
 ### DEFINE FUNCTION
-# summarize subject edits
-function surfergems_subject-edits(){
-	# [ "${SUBJECTS}" ] && SUBJECTS=($(echo ${SUBJECTS[@]}))
-	echo -e '\n Summarizing Edits for Subject(s)...'
-	printf '\t👤 %s\n' $(echo ${SUBJECTS[@]})
-	# [ ! "${EXISTS}" ] && surfergems_files
-	# echo -e '\nRequired Image/Surface Files for Web Report'
-	counter=0
-	for SUBJECT in ${SUBJECTS[@]}; do
-		printf "\r%s✏️  📊  %d/%d -- Compiling ${SUBJECT} Edits" "$(tput el)" ${counter} ${#SUBJECTS[@]}
-		# ${FREESURFER_HOME}/recon-all -s ${1} -show-edits > ${SUBJECTS_DIR}'/'${1}'/manual-edits-report.txt'
-		${FREESURFER_HOME}/bin/bmedits2surf --self --tmp ${SUBJECTS_DIR}/${SUBJECT}/qc --s ${SUBJECT} > /dev/null
-		${FREESURFER_HOME}/bin/wmedits2surf --self --tmp ${SUBJECTS_DIR}/${SUBJECT}/qc --s ${SUBJECT} > /dev/null
-		if [ ${VERBOSE} ]; then
-			bmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/bm.erase.dat | awk '{print $1}')
-			wmerase=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.erase.dat | awk '{print $1}')
-			wmfill=$(cat ${SUBJECTS_DIR}/${SUBJECT}/stats/wm.fill.dat | awk '{print $1}')
-			printf '\n\t# Erased voxels in brainmask: %d\n' ${bmerase}
-			printf '\t# Erased voxels in white matter mask: %d\n' ${wmerase}
-			printf '\t# Filled voxels in white matter mask: %d\n' ${wmfill}
+#   use git to sync local with remote
+####################################################################################################################
+function surfergems_html_sync(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_sync $@"		
+	local CWD=$(pwd)
+	[ -d ${REPORTDIR} ] && cd ${REPORTDIR} && git pull && cd ${CWD}
+}
+export -f surfergems_html_sync
+####################################################################################################################
+### DEFINE FUNCTION
+#   use git to publish local
+####################################################################################################################
+function surfergems_html_publish(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_publish $@"		
+	local CWD=$(pwd)
+	if [ -d ${REPORTDIR} ]; then
+		cd ${REPORTDIR}
+		if git commit -am "web update $(hostname)"; then
+			if git push; then
+				cd ${CWD}	
+			fi
 		fi
-		((counter++))
-	done		
-}
-### DEFINE FUNCTION
-# screenshot subject edits
-################################################################################################################
-################################################################################################################
-
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######## HTML SECTION
-########
-########
-########
-################################################################################################################
-################################################################################################################
-function surfergems_html(){
-	echo -e "${BLUE}Building Web-Report${NC}"
-	if [ -z "${SUBJECTS}" ]; then
-		surfergems_status
-		SUBJECTS=("${RUNNINGSUBJECTS[@]}" "${FINISHEDSUBJECTS[@]}" "${FAILEDSUBJECTS[@]}")		
 	fi
-	surfergems_html.init
+}
+export -f surfergems_html_publish
+####################################################################################################################
+### DEFINE FUNCTION
+#   build papaya viewer javascript with pre-loaded images
+####################################################################################################################
+function surfergems_html_papaya(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_papaya $@"		
+	local subject=${1} && shift
+	local reportdir=${1} && shift
+	local images="$@" && local cwd=$(pwd)
+	local found='' && local counter=0;
+	# only get those files that were converted (avoid building error for papaya)		
+	for i in ${images[@]}; do
+		found+=" "$(find ${SUBJECTS_DIR}/${subject} -name "${i}.nii.gz")
+	done
+	if [ ! -f "${reportdir}/assets/js/${subject}.papaya.js" ]; then
+		if [ ! -z "${found}" ]; then
+			[ -d ${reportdir}/assets/papaya/build ] && rm -r ${reportdir}/assets/papaya/build
+			if 	pushd ${reportdir}/assets/papaya/ > /dev/null && \
+				java -Xmx512M -jar ${reportdir}/assets/papaya/lib/papaya-builder.jar -images ${found} -local 2&>1 /dev/null && \
+				popd > /dev/null && \
+				java -jar ${reportdir}/assets/papaya/lib/compiler.jar  \
+				 --js ${reportdir}/assets/papaya/build/papaya.js \
+				 --js_output_file ${reportdir}/assets/js/${subject}.papaya.js \
+				 --warning_level QUIET \
+				 --compilation_level SIMPLE_OPTIMIZATIONS \
+				 --language_in=ECMASCRIPT5 2&>1 /dev/null; then
+				printf "%s\r\r${GREEN}   javascript successfully written ${reportdir}/assets/js/${subject}.papaya.js\r" $(tput el)
+			else
+				echo -e "${BRED}\r\rERROR: java compilation failed for ${reportdir}/assets/js/${subject}.papaya.js ${NC}\r" >&2
+				exit 1				
+			fi			
+		else
+			echo -e "\r\r  ${YELLOW}WARNING${NC} No NIFTI files found for ${subject}! Maybe conversion failed?... Skipping...${NC}\r" >&2
+		fi
+	else
+		printf "%s\r\r  ${GREY} ${reportdir}/assets/js/${subject}.papaya.js already exists!.. continuing\r" $(tput el) >&2
+	fi
+}
+export -f surfergems_html_papaya
+####################################################################################################################
+### DEFINE FUNCTION
+#   parent function for building html pages
+####################################################################################################################
+function surfergems_html(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html $@"		
+	echo -e "${BLUE}Building Web-Report${NC}"
+	# summarize only finished subjects by default
+	if [ ! "${SUBJECTS}" ]; then
+		surfergems_status && declare -g SUBJECTS=("${FINISHEDSUBJECTS[@]}")		
+	fi		
+	surfergems_html_init	
+	# sync and publish here?
+	##
+	##
 	# resources & references 
 	# http://www.compciv.org/topics/web/heredocs_and_html/
 	# http://www.compciv.org/topics/bash/text-values/#heredocs-info
@@ -697,114 +1270,332 @@ function surfergems_html(){
 	# Later...
 	# Include graphics for summary report of data from subject
 }
-function surfergems_html.sync(){
-	local CWD=$(pwd)
-	[ -d ${REPORTDIR} ] && cd ${REPORTDIR} && git pull && cd ${CWD}
+export -f surfergems_html
+####################################################################################################################
+### DEFINE FUNCTION
+#   load custom definitions into namespace from text file
+####################################################################################################################
+function surfergems_html_init_load_config(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init_load_config $@"		
+    local file=${1}
+    while read var; do
+		eval ${var}
+    done < ${file}
 }
-function surfergems_html.publish(){
-	local CWD=$(pwd)
-	if [ -d ${REPORTDIR} ]; then
-		cd ${REPORTDIR}
-		if git commit -am "web update $(hostname)"; then
-			if git push; then
-				cd ${CWD}	
-			fi
-		fi
-	fi
-}
-function surfergems_html.papaya(){
-	local subject=${1} && local images=${2} && local cwd=$(pwd)
-	cd ${REPORTDIR}/assets/papaya && ${REPORTDIR}/assets/papaya/papaya-builder.sh -images ${images} -local
-	cp ${REPORTDIR}/assets/papaya/build/papaya.js ${REPORTDIR}/assets/js/${subject}.papaya.js && cd ${cwd}
-}
-function surfergems_html.init(){
-	# get all jobs
+export -f surfergems_html_init_load_config
+####################################################################################################################
+### DEFINE FUNCTION
+#   initialize everything for html joy!
+####################################################################################################################
+function surfergems_html_init(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init $@"		
 	# Clone Report Tools If You Don't Have Them
-	if [ ! -d ${REPORTDIR} ]; then
+	if [ ! -d ${REPORTDIR} ]
+	then
 		git clone ${REPORTREPO_TEMPLATE} ${REPORTDIR}
+	fi		
+	#######################################################
+	# Create all files needed for web report generation
+	#######################################################
+	if surfergems_makeavg
+	then
+		printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${GREY}surfergems_makeavg${NC}"
+	else
+		printf "\r${BRED}◀︎|⁃‣ERROR${NC} ${GREY}surfergems_makeavg failed${NC}"
 	fi
+	#
+	if parallel -k --link surfergems_convert 'vol' ${IEXT} ${OEXT} {} "${MGZs[@]}" ::: ${SUBJECTS[@]}
+	then
+		printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${GREY}parallel -k --link surfergems_convert 'vol' ${IEXT} ${OEXT} {} ${MGZs[@]} ::: ${SUBJECTS[@]} ${NC}"
+	else		
+		printf "\r${BRED}◀︎|⁃‣ERROR${NC} ${GREY}parallel -k --link surfergems_convert 'vol' ${IEXT} ${OEXT} {} ${MGZs[@]} ::: ${SUBJECTS[@]} failed${NC}"
+	fi
+	#
+	if parallel -k --link surfergems_html_papaya {} ${REPORTDIR} "${MGZs[@]}" ::: ${SUBJECTS[@]}
+	then
+		printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} ${GREY}parallel -k --link surfergems_html_papaya {} ${REPORTDIR} ${MGZs[@]} ::: ${SUBJECTS[@]}${NC}"
+	else
+		printf "\r${BRED}◀︎|⁃‣ERROR${NC} ${GREY}parallel -k --link surfergems_html_papaya {} ${REPORTDIR} ${MGZs[@]} ::: ${SUBJECTS[@]}${NC} failed"
+	fi
+	#######################################
 	# Initialize INDEX
-	PAGETITLE='Surfer-gems | Web Reports'
-	PROJECTNAME='Demo FreeSurfer Project'
-	HEADERNAME='FreeSurfer Project: Web Reports'
-	DESCRIPTION='🤵🏻 Automated web reports of 3D structural MR images reconstructed with the <a href="http://freesurfer.net"> FreeSurfer software package</a>. Generated with <a href="https://github.com/seldamat/Surfer-gems">Surfer-gems</a>, <a href="https://github.com/rii-mango/Papaya.git">Papaya</a> and <a href="https://html5up.net">html5up</a>'	
-	echo -e "${YELLOW}❍ building home page${NC}"
-	surfergems_html.init.index
-	# Initialize Landing Pages
-	## - TODO clean this up.. make it more customizable 
-	## - TODO configure with default but allow user modification
-	## - TODO make TILEPAGES dynamic and configurable via append function
-	## group
-	PAGETITLE=${PROJECTNAME}'| FreeSurfer Average Subject Report'
-	HEADERNAME=${PROJECTNAME}': Group Averaged Reports'
-	DESCRIPTION='Select from different group summaries'	
-	TILES=("atlas" "thickness" "curvature" "surface-area" "volumes" "edits" "contrast-to-noise")
-	TILEPICS=("tile.average.atlas" "tile.average.thickness" "tile.average.curvature" "tile.average.surface-area" "tile.average.tpm" "tile.average.edits" "tile.average.contrast-to-noise")
-	TILEPAGES=("group.atlas" "group.thickness" "group.curvature" "group.surface-area" "group.tpm" "group.edits" "group.contrast-to-noise")	
-	HTMLFILE=${REPORTDIR}/pages/group.landing.html	
-	echo -e "${YELLOW}❍ building landing page${NC}" ${HTMLFILE}
-	surfergems_html.init.landing ${HTMLFILE}
-	## create subject index landing page with nested list of data view types (convergent recursion)
-	PAGETITLE=${PROJECTNAME}'| Subject Index'
-	HEADERNAME=${PROJECTNAME}': Subject Index'	
-	DESCRIPTION='Browse brain volumes, surfaces, summary reports and statistics'		
-	TILES=(${SUBJECTS[@]})
-	for TILE in "${TILES[@]}"; do
-		TILEPAGES+=("indiv.landing.${TILE}")
-		TILEPICS+=("tile."${TILE})
-		## insert function for retrieving tile descriptions
-		TILEDESCRIPTIONS+=("(Age, Sex)")		
-	done
-	HTMLFILE=${REPORTDIR}/pages/indiv.landing.html
-	echo -e "${YELLOW}❍ building landing page${NC}" ${HTMLFILE}
-	surfergems_html.init.landing ${HTMLFILE} ${TILEDESCRIPTIONS}
-	### create nested landings 
-	TILEPAGES=() && TILEPICS=()
-	for SUBJECT in ${SUBJECTS[@]}; do
-		TILES=("atlas" "surface-morphometrics" "edits" "contrast-to-noise")
-		HEADERNAME=' Surface &amp; Volume Summaries: '${SUBJECT}
-		for TILE in "${TILES[@]}"; do
-			TILEPAGES+=("${SUBJECT}.${TILE}")
-			TILEPICS+=("tile.${TILE}.${LANDING}")
-			echo -e "${YELLOW}❍ building page for tile ${NC}" "${REPORTDIR}/pages/${SUBJECT}.${TILE}.html"
-			surfergems_html.init.tile ${TILE} "${REPORTDIR}/pages/${SUBJECT}.${TILE}.html" ${SUBJECT}
-			# generate data viewer page (papaya or 3d render somehow or screenshots in carousel)
-			# surfergems_html.init.summary ${REPORTDIR}/pages/indiv.${LANDING}.${TILE}.summary.html
-		done
-		echo -e "${YELLOW}❍ building landing page ${NC}" ${REPORTDIR}/pages/indiv.landing.${SUBJECT}.html 		
-		surfergems_html.init.landing ${REPORTDIR}/pages/indiv.landing.${SUBJECT}.html "${TILES}"
-	done	
-
-
-}
-function surfergems_html.init.tile(){
-	local tile="${1}" && local outfile=${2} && local subject=(${3}) && local images=""
-	if [ "${tile}" = 'atlas' ]; then
-		# TODO :: remove this from here and convert as a batch before creating tile, then remove input
-		local files=${1}
-		local iext=${2}
-		local oext=${3}		
-		searchfor='T1 brainmask wm aseg aparc+aseg aparc.DKTatlas+aseg aparc.a2009s+aseg wmparc'
-		surfergems_convert.NIFTI "${searchfor}" 'mgz' 'nii.gz'
-		found=""
-		for search in ${searchfor}; do
-			found+="$(find ${SUBJECTS_DIR}/${subject[@]} \( ! -regex '.*/\..*' \)  -name "${search}.nii.gz") "
-		done
-		surfergems_html.papaya "${subject[@]}" "${found}" 
-		surfergems_html.init.tile.papaya "$(echo ${searchfor} | sed 's|+|_|g' | sed 's|\.|_|g')" "${outfile}" "${subject[@]}"
-		# TODO - update surface tile control flow
-	# elif [ $(echo "${tile}" | grep 'surface') ]; then
-	# 	echo surfergems_html.init.tile.surface
-	# elif [ "${tile}" = 'edits' ]; then
-	# 	echo ''
-	elif [ "${tile}" = 'contrast-to-noise' ]; then
-	 	echo ''
-	# else
-	# 	echo ''
+	#######################################
+	# printf "%s\r\r${YELLOW}❍ building home page${NC}\r" $(tput el)
+	surfergems_html_init_load_config ${REPORTDIR}/config/index.txt
+	if surfergems_html_init_index; then
+		continue
+	else
+		echo -e "${BRED}ERROR: surfergems_html_init_index failed to write ${REPORTDIR}/index.html${NC}" >&2					
 	fi
-
+	########################################
+	## create group summary landing page
+	########################################
+	##
+	if surfergems_html_init_landing ${REPORTDIR}/config/landing.average.txt 'landing.average'; then
+		continue
+	else
+		echo -e "${BRED}ERROR: surfergems_html_init_landing failed to write ${REPORTDIR}/pages/landing.average.html${NC}" >&2					
+	fi
+	########################################
+	### create page for each group tile
+	########################################
+	##
+	## TODO - fix parallelization here (no export of global ??)
+	# parallel -k --link --bar surfergems_html_init_tile {} \
+	# 						${REPORTDIR}/pages/group.landing.{}.html \
+	# 						${AVERAGENAME} ${SUBJECTS[@]}\
+	# 						::: ${TILES[@]}	
+	for tile in ${TILES[@]}; do
+		if surfergems_html_init_tile ${tile} \
+							${REPORTDIR}/pages/landing.average.${tile}.html \
+							${AVERAGENAME}; then
+			continue 
+		else
+			echo -e "${BRED}ERROR: surfergems_html_init_tile failed to write ${REPORTDIR}/pages/landing.${tile}.html${NC}" >&2			
+		fi
+	done
+	exit							
+	#########################################
+	## create subject index landing page 
+	## with nested list of data view types 
+	#########################################
+	##
+	## index of all subjects (as tiles)
+	if surfergems_html_init_landing ${REPORTDIR}/config/landing.subjects.txt 'landing.subjects'; then
+		continue
+	else
+		echo -e "${BRED}ERROR: surfergems_html_init_landing failed to write ${REPORTDIR}/pages/landing.subjects.html${NC}" >&2			
+	fi
+	##########################################
+	## create landing pages for each subject
+	## (convergent recursion)
+	## -- would be cool to generalize ad infinitum 
+	##########################################
+	##
+	## landing for each subject with summary tiles
+	for subject in ${SUBJECTS[@]}; do
+		if surfergems_html_init_landing ${REPORTDIR}/config/landing.subjects.tile.txt \
+									 'landing.subjects.'${subject}; then
+			continue
+		else
+			echo -e "${BRED}ERROR: surfergems_html_init_landing failed to write ${REPORTDIR}/pages/landing.subjects.${subject}.html${NC}" >&2
+		fi
+	done
+	# parallel -k --link --bar surfergems_html_init_landing \
+	# 					 ${REPORTDIR}/config/landing.subjects.tile.txt  'landing.subjects.'{} \
+	# 					 ::: ${SUBJECTS[@]}
+	##########################################
+	### create page for each tile
+	### (atlas, surface, edits, etc)
+	##########################################							 
+	##
+	##
+	# for TILE in ${TILES[@]}; do
+	# 	parallel -k --link --bar surfergems_html_init_tile \
+	# 						${TILE}
+	# 						"${REPORTDIR}/pages/indiv.landing.{}.${TILE}.html" \
+	# 						::: ${SUBJECTS[@]}
+	# done
+	for TILE in ${TILES[@]}; do
+		for SUBJECT in ${SUBJECTS[@]}; do
+			surfergems_html_init_tile ${TILE} ${REPORTDIR}/pages/landing.subjects.${SUBJECT}.${TILE}.html
+		done
+	done	
 }
-function surfergems_html.init.tile.papaya(){
+export -f surfergems_html_init
+####################################################################################################################
+### DEFINE FUNCTION
+#   create everything you need for a specific tile
+####################################################################################################################
+# TODO
+#		global variables are not accessible in this subfunction.. fix this!
+function surfergems_html_init_tile(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init_tile $@"		
+	local tile="${1}" && shift
+	local outfile=${1} && shift
+	local subject=(${1}) && shift	
+	#declare -g SUBJECTS=("$@")
+	PAGETITLE=${tile} && HEADERNAME=${tile}	
+	if [ "${tile}" = 'volume-atlas' ]; then
+		surfergems_html_init_tile_papaya "$(echo ${searchfor} | sed 's|+|_|g' | sed 's|\.|_|g')" "${outfile}" "${subject[@]}"
+	elif [ "${tile}" = 'edits' ]; then
+		surfergems_subject_edits "${subject[@]}"
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'bmedits.annot' ${outfile} 'qc'			
+	elif [ "${tile}" = 'brainmask-edits-summary' ]; then
+		surfergems_subject_edits $(echo "${SUBJECTS[@]}" | sed "s|${AVERAGENAME}||g") && surfergems_group_edits
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'pedit-brainmask.gii' ${outfile} 'qc'
+	elif [ "${tile}" = 'thickness' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'thickness' ${outfile} 'surf'	
+	elif [ "${tile}" = 'surface-parcellation' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'aparc.annot' ${outfile} 'label'		
+	elif [ "${tile}" = 'surface-parcellation-a2009s' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'aparc.a2009s.annot' ${outfile} 'label'
+	elif [ "${tile}" = 'desikian-killiany' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'aparc.DKTatlas.annot' ${outfile} 'label'		
+	elif [ "${tile}" = 'brodmann' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'BA_exvivo.annot' ${outfile} 'label'				
+	elif [ "${tile}" = 'sulcal-depth' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'sulc' ${outfile} 'surf'
+	elif [ "${tile}" = 'gaussian-curvature' ]; then
+		surfergems_html_init_tile_nilearn_surf "${subject[@]}" 'curv' ${outfile} 'surf'
+	fi
+}
+export -f surfergems_html_init_tile
+####################################################################################################################
+## DEFINE FUNCTION
+#  autogenerate html code for viewing surfaces
+####################################################################################################################
+function surfergems_html_init_tile_nilearn_surf(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init_tile_nilearn_surf $@"		
+local subject=${1}
+local cdata=${2}
+local outfile=${3}
+local type=${4}
+local tmpdir=${REPORTDIR}/pages/tmp/
+[ ! -d ${tmpdir} ] && mkdir -p ${tmpdir}
+printf "%s\r\r ${GREY}Building Surface Viewer for %s, %s -> %s\n${NC}\r" $(tput el) ${subject} ${cdata} ${outfile}
+if [ "${type}" = 'surf' ]; then
+	local cmap="terrain"
+	local pythoncommand="from nilearn import datasets, plotting, surface;mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.inflated.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,data,cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.inflated.${cdata}.html');quit()"
+elif [ "${type}" = 'qc' ]; then
+	if [ "${cdata}" = 'pedit-brainmask.gii' ]; then
+		local cmap='terrain'
+		local pythoncommand="from nilearn import datasets, plotting, surface;mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.inflated.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.inflated.${cdata}.html');quit()"	
+	elif [ "${cdata}" = 'bmedits.annot' ]; then
+		local cmap="Accent"
+		local pythoncommand="from nilearn import datasets, plotting, surface;mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.inflated.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.inflated.${cdata}.html');quit()"	
+	fi
+elif [ "${type}" = 'label' ]; then
+	local cmap="gist_earth"
+	local pythoncommand="from nilearn import datasets, plotting, surface;mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.pial');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.pial.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.white');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.white.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/lh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/lh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.lh.inflated.${cdata}.html');mesh=surface.load_surf_mesh('${SUBJECTS_DIR}/${subject}/surf/rh.inflated');data=surface.load_surf_data('${SUBJECTS_DIR}/${subject}/${type}/rh.${cdata}');view=plotting.view_surf(mesh,abs(data),cmap='${cmap}',symmetric_cmap=False);view.save_as_html('${tmpdir}/${subject}.rh.inflated.${cdata}.html');quit()"
+fi
+if python -c "${pythoncommand}" 2> /dev/null 1>/dev/null; then
+	printf "%s\r\r  🔢 ${GREY}surfaces compiled with '${cdata}' overlay${NC}\r" $(tput el)
+else
+	echo -e "\r${BRED} ERROR: python command: ${pythoncommand} failed" >&2
+	exit 0
+fi
+# parse the output of the python command to obtain surfaceMapInfo for L and R
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.rh.pial.${cdata}.html > ${tmpdir}/${subject}.rh.pial.${cdata}.surfmapinfo.txt
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.lh.pial.${cdata}.html > ${tmpdir}/${subject}.lh.pial.${cdata}.surfmapinfo.txt		
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.rh.white.${cdata}.html > ${tmpdir}/${subject}.rh.white.${cdata}.surfmapinfo.txt
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.lh.white.${cdata}.html > ${tmpdir}/${subject}.lh.white.${cdata}.surfmapinfo.txt				
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.rh.inflated.${cdata}.html > ${tmpdir}/${subject}.rh.inflated.${cdata}.surfmapinfo.txt
+grep -oE 'var surfaceMapInfo \= \{.*?\]\]' ${tmpdir}/${subject}.lh.inflated.${cdata}.html > ${tmpdir}/${subject}.lh.inflated.${cdata}.surfmapinfo.txt				
+# define weird strings
+jquerycommand=$(cat ${REPORTDIR}/assets/js/jquery_surf.js)
+plotlycommand=$(cat ${REPORTDIR}/assets/js/plotly_surf.js)
+inlinecommand=$(cat ${REPORTDIR}/assets/js/inline_surf.js)
+printf "%s\r${GREY}  building page head${NC}\r" $(tput el)
+echo ${outfile}
+# first write the head 
+read -r -d '' head << EOF
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+	<title>${PAGETITLE}</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<link rel="stylesheet" href="../assets/css/main.css" />
+    <div id="wrapper">
+        <!-- Header -->
+        <header id="header" class="alt style1">
+            <a href="../pages/indiv.landing.${subject}.html" class="logo"><strong><font size="+2">Return to Gallery | ${subject} </strong></font></a>
+            <nav>
+                <a href="#menu"><font size="+2">Menu</font></a>
+            </nav>
+        </header>
+        <nav id="menu">
+            <ul class="links">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../pages/group.landing.html"><<font size="+2">Group Reports</font></a></li>
+                <li><a href="../pages/indiv.landing.html"><font size="+2">Individual Reports</font></a></li>
+                <li><a href="../pages/references.html"><font size="+2">References</font></a></li>
+            </ul>
+        </nav>   
+    </div>    
+    <script>/*! jQuery v3.3.1 | (c) JS Foundation and other contributors | jquery.org/license */
+    	${jquerycommand}
+	</script>
+        <script>/**
+			* plotly.js (gl3d - minified) v1.38.3
+			* Copyright 2012-2018, Plotly, Inc.
+			* All rights reserved.
+			* Licensed under the MIT license
+			*/
+			${plotlycommand}
+		</script>	
+    	<script>
+    		${inlinecommand}
+    	</script>
+        
+EOF
+	echo "${head}" > ${outfile}
+	makeplotcommand=$(cat ${REPORTDIR}/assets/js/makePlot_surf.js)
+	makedocumentcommand=$(cat ${REPORTDIR}/assets/js/makedoc_surf.js)
+##### UPDATE WITH SUBJECT FILE
+piallh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.lh.pial.${cdata}.surfmapinfo.txt)
+pialrh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.rh.pial.${cdata}.surfmapinfo.txt | sed 's|vertexcolor_left|vertexcolor_right|g')
+whitelh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.lh.white.${cdata}.surfmapinfo.txt)
+whiterh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.rh.white.${cdata}.surfmapinfo.txt  | sed 's|vertexcolor_left|vertexcolor_right|g')
+inflatedlh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.lh.inflated.${cdata}.surfmapinfo.txt)
+inflatedrh=$(grep -oE '\{"_x".*?\]\]' ${tmpdir}/${subject}.rh.inflated.${cdata}.surfmapinfo.txt  | sed 's|vertexcolor_left|vertexcolor_right|g')
+# var surfaceMapInfo = {"pial_left": ${piallh}, "pial_right": ${pialrh}, "white_left": ${whitelh}, "white_right": ${whiterh}, "inflated_left": ${inflatedlh},"inflated_right": ${inflatedrh}};
+printf "%s\r${GREY}  building page body${NC}\r" $(tput el)
+
+	read -r -d '' body <<EOF
+    <script>
+         var surfaceMapInfo = {"pial_left": ${piallh}, "pial_right": ${pialrh}, "white_left": ${whitelh}, "white_right": ${whiterh}, "inflated_left": ${inflatedlh}, "inflated_right": ${inflatedrh}};
+
+      	${makeplotcommand}
+    </script>
+    <script>
+    	${makedocumentcommand}
+    </script>
+
+</head>
+<body>
+	<div id="main" class="alt">
+		<section id="one">
+			<div class="inner">
+				<header class="major">
+					<h2>${subject}</h2>
+				</header>
+		    <select id="select-hemisphere">
+		        <option value="left">Hemisphere: Left</option>
+		        <option value="right">Hemisphere: Right</option>
+		    </select>
+		    <select id="select-kind">
+		        <option value="pial">Surface: Pial</option>
+				<option value="white">Surface: White</option>	    
+		        <option value="inflated">Surface: Inflated</option>
+		    </select>
+		    <select id="select-view">
+		        <option value="left">Jump View: Left</option>
+		        <option value="right">Jump View: Right</option>
+		        <option value="front">Jump View: Front</option>
+		        <option value="back">Jump View: Back</option>
+		        <option value="top">Jump View: Top</option>
+		        <option value="bottom">Jump View: Bottom</option>
+		    </select>	
+		    <div id="surface-plot" class="content"></div>
+		</section>
+	</div>
+</body>
+</html>    
+EOF
+printf "%s\r  💾  writing ${outfile}${NC}" $(tput el)
+printf "${body}" >> ${outfile}
+}
+export -f surfergems_html_init_tile_nilearn_surf
+####################################################################################################################
+## DEFINE FUNCTION
+#  autogenerate html for papaya volume viewer
+####################################################################################################################
+function surfergems_html_init_tile_papaya(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init_tile_papaya $@"		
 	images=${1} outfile=${2}
 	read -r -d '' page <<EOF
 <!DOCTYPE html>
@@ -2185,12 +2976,22 @@ function surfergems_html.init.tile.papaya(){
 	</body>
 </html>
 EOF
-echo -e "writing ${outfile}${NC}"
+echo -e "  💾  writing ${outfile}${NC}\n"
 printf "${page}" > ${outfile}
 }
-function surfergems_html.init.landing(){
-	OUTFILE=${1}
-	[ ! -d ${REPORTDIR}/pages ] && mkdir -v ${REPORTDIR}/pages
+export -f surfergems_html_init_tile_papaya
+####################################################################################################################
+## DEFINE FUNCTION
+#  write landing page html to file 
+####################################################################################################################
+function surfergems_html_init_landing(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_init_landing $@"		
+	local configfile=${1} && export landing=${2}
+	[ ! -f ${configfile} ] && echo -e "\n\n${BRED} ERROR: ${configfile} does not exit${NC}" >&2 && exit 1
+	surfergems_html_init_load_config ${REPORTDIR}/config/group.landing.txt
+	local outfile=${REPORTDIR}/pages/${LANDING}.html
+	printf "%s\r${YELLOW}❍ building landing page${NC} ${REPORTDIR}/pages/${LANDING}.html" $(tput el)
+	[ ! -d ${REPORTDIR}/pages ] && mkdir -v ${REPORTDIR}/pages	
 	read -r -d '' LANDINGPAGE <<EOF
 <!DOCTYPE HTML>
 <!--
@@ -2203,10 +3004,7 @@ function surfergems_html.init.landing(){
 		<title>${PAGETITLE}</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
-		<!--[if lte IE 8]><script src="../assets/js/ie/html5shiv.js"></script><![endif]-->
 		<link rel="stylesheet" href="../assets/css/main.css" />
-		<!--[if lte IE 9]><link rel="stylesheet" href="../assets/css/ie9.css" /><![endif]-->
-		<!--[if lte IE 8]><link rel="stylesheet" href="../assets/css/ie8.css" /><![endif]-->
 	</head>
 	<body>
 
@@ -2251,17 +3049,17 @@ function surfergems_html.init.landing(){
 						<!-- One -->
 							<section id="one" class="tiles">					
 EOF
-printf "${LANDINGPAGE}" > ${OUTFILE}
+printf "${LANDINGPAGE}" > ${outfile}
 ##
-counter=0
+local counter=0
 for TILE in "${TILES[@]}"; do
 	TILEPIC="${TILEPICS[$counter]}"
-	TILEPAGE="${TILEPAGES[$counter]}"
 	TILEDESCRIPTION="${TILEDESCRIPTIONS[$counter]}"
+	TILEPAGE="${TILEPAGES[$counter]}"
 read -r -d '' LANDINGTILE <<EOF
 								<article>
 									<span class="image">
-										<img src="../images/${TILE}/${TILEPIC}.jpg" alt="" />
+										<img src="../assets/images/${TILEPIC}.png" alt="" />
 									</span>
 									<header class="major">
 										<h3><a href="../pages/${TILEPAGE}.html" class="link">${TILE}</a></h3>
@@ -2270,7 +3068,7 @@ read -r -d '' LANDINGTILE <<EOF
 								</article>
 EOF
 # append to file
-printf "${LANDINGTILE}" >> ${OUTFILE}
+printf "${LANDINGTILE}" >> ${outfile}
 ((counter++))
 done
 ##
@@ -2303,15 +3101,21 @@ read -r -d '' LANDINGEND <<EOF
 	</body>
 </html>
 EOF
-	printf "${LANDINGEND}" >> ${OUTFILE}
-	echo 'writing '${OUTFILE}
-	TILEPAGES=()
-	TILEPICS=()
-	TILES=()
+	printf "${LANDINGEND}" >> ${outfile}
+	[ ! -f ${outfile} ] && exit 1
+	printf "%s\r  💾  wrote ${outfile} \n" $(tput el)
 }
+export -f surfergems_html_init_landing
+####################################################################################################################
 ### DEFINE FUNCTION
-##  Make Index
-function surfergems_html.init.index(){
+#   make index.html (main page)
+####################################################################################################################
+function surfergems_html_init_index(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_html_init_index $@"		
+	local configfile=${1}
+	[ ! -f ${configfile} ] && echo -e "\n\n${BRED} ERROR: ${configfile} does not exit${NC}" >&2  && exit 1
+	surfergems_html_init_load_config ${configfile}
+	##
 	read -r -d '' INDEX <<EOF
 <!DOCTYPE HTML>
 <!--
@@ -2355,7 +3159,7 @@ function surfergems_html.init.index(){
 					<section id="banner" class="style2">
 						<div class="inner">
 							<span class="image">
-								<img src="images/pic07.jpg" alt="" />
+								<img src="assets/images/sulc.png" alt="" />
 							</span>
 							<header class="major">
 								<h1>${HEADERNAME}</h1>
@@ -2426,217 +3230,300 @@ function surfergems_html.init.index(){
 </html>	
 EOF
 	printf "${INDEX}" > ${REPORTDIR}/index.html 
-	echo 'writing '${REPORTDIR}'/index.html'
+	[ ! -f ${REPORTDIR}'/index.html' ] && exit 1
+	printf '%s\r  💾  wrote '${REPORTDIR}'/index.html' $(tput el)
 }
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######## PARSE OPTIONS
-########
-########
-########
-################################################################################################################
-################################################################################################################
+export -f surfergems_html_init_index
+####################################################################################################################
+# PARSE OPTIONS
+####################################################################################################################
+### DEFINE FUNCTION
+####################################################################################################################
+function surfergems_verifysubs() {
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_verifysubs $@"			
+	local userinput="$@"
+	local insubjectsdir="$(find ${SUBJECTS_DIR} -name 'recon-all.log' \
+						   | awk '{print $NF}' \
+						   | sed "s|${SUBJECTS_DIR}||g" \
+						   | sed "s|/| |g" \
+						   | awk '{print $1}' \
+						   | sort -u)"
+# check to see if input string matches list of subjects with logs
+printf '%s\n' ${insubjectsdir} | sort > /tmp/surfergems-sublist.tmp
+printf '%s\n' ${userinput} | sort -u > /tmp/surfergems-sublist-input.tmp
+local nomatch=$(comm -13 --nocheck-order <(printf '%s\n' "${insubjectsdir}") <(printf '%s\n' $(printf '%s\n' $(cat /tmp/surfergems-sublist-input.tmp))))
+# exit if there is no match
+if [ "${nomatch}" ]; then
+	 >&2 echo -e "\n${YELLOW} ⚠️  WARNING: ${NC}SUBJECT $(printf '"%s" ' ${nomatch}) NOT FOUND IN ${SUBJECTS_DIR}"
+	return 1
+else
+	# $(eval `echo printf '▻%.0s' {1..$(echo ${SUBJECTS_DIR} | wc -c)}`)
+	 >&2 printf "${GREEN}INPUT MATCHES SUBJECT MANIFEST${GREY}\t🏄‍♂️${SUBJECTS_DIR}${NC}\n" 
+	 return 0
+fi	
+}
+####################################################################################################################
+### DEFINE FUNCTION
+####################################################################################################################
 function surfergems_parseopts(){
 	# print usage and exit
 	if [ "$#" = 0 ]; then
 		surfergems_usage
-		exit
+		exit 0
 	fi
 	if [ "$(echo $@ | grep '\help\|-h\|\?\|usage')" ]; then
-		HELP='heychillabit'
+		HELP='hi, can i have some help?'
 	fi
-	surfergems_defaults
-	# Parse Options
-	while :; do
+	# check for debug
+	[ "$(printf "%s " "$@" | grep -E -- "(-log|--log|-l|--debug|-debug|-d)")" ] && DEBUG="${SOURCEPATH}/surfergems.runtime"
+	[ ! ${DEBUG} ] && export debugerr='/dev/null' && export debugout='/dev/null'
+	[ ${DEBUG} ] && export debugerr=${DEBUG}.err && export debugout=${DEBUG}.out
+	# load default parameters
+	surfergems_defaults 2>>${debugerr} 1>>${debugout}
+	SUBJECTS+=($(printf '%s ' "$@" | grep -oE -- '(-s |--subjects ).*?\s' | sed 's|-s ||g' | sed 's| ||g'))
+	# loop across input
+	while (( "$#" )); do
 	    case ${1} in
-	    -f|--files)
+	    --stats|-i)
+			RECONSTATS='getdetails'
+		    ;;		    	    	
+	    --files|-f)
 			FILECHECK='checkemall'
-		    ;;	    	
-		--convert-vol)
+			 STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${BLUE}done${NC}" "${YELLOW}failed${NC}" "${LRED}incomplete${NC}")
+		    ;;
+		--edits-summary|-es)
+			if [ -n "$2" ]; then 
+				if [ $(echo "$2" | grep '^-') ] || [ $(echo "$2" | grep 'subject') ]; then
+					EDITSUMMARY='subject'
+				elif [ $(echo "$2" | grep 'group') ]; then
+					EDITSUMMARY='group'
+				else
+		    		echo -e ${BRED}'ERROR: '${NC}'legal values for --edits-summary|-es are "subject" or "group". User input was "'${2}'"\n...exiting'
+		    		exit 1
+				fi
+			else					
+				EDITSUMMARY='subject'
+			fi
+			;;
+	    --overwrite|-ow)
+			OVERWRITE=" ⚡︎ ${BRED}OVERWRITING EXISTING FILES${NC}"
+		    ;;					
+		--make-average|-ma)
+		    if [ -n "$2" ]; then
+				if [ "$(echo "$2" | grep '^-')" ]; then
+					AVERAGENAME='average'	
+				else
+					AVERAGENAME=${2}
+					shift
+				fi
+			else
+				AVERAGENAME='average'
+		    fi					
+			;;									
+		--morph-stats|-ms)
+			MORPHSTATS='getstatistics'
+		    if [ -n "$2" ] && [ ! $(echo ${2} | grep -e '^-') ] ; then
+		    	MEASURES+=("${2}")
+		    	shift
+			else
+				MEASURES=('area' 'volume' 'thickness' 'thicknessstd' 'meancurv' 'gauscurv' 'foldind' 'curvind')
+				ATLAS=('aseg' 'aparc.a2009s')
+		    fi
+			;;		    					    						    	
+	    --kill-jobs|-kj)
+			KILLJOBS='hangup'
+		    ;;			
+		--subjects_dir|-sd)
+		    if [ -n "$2" ]; then
+				declare -g SUBJECTS_DIR=${2}
+				shift
+		    else
+				echo -e "${BRED}ERROR: ${NC}-sd --subjects-dir requires a non empty option argument.\n" >&2
+				exit 1
+		    fi
+		    ;;
+	    --status|-st)
+		    if [ -n "$2" ]; then
+		    	if [ "$(echo "$2" | grep '^-')" ]; then
+		    		declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+		    	else
+			    	if [ "$2" = 'active' ]; then
+			    		declare -g STATUS+=("${GREY}${2}${NC}")
+			    	elif [ "$2" = 'done' ]; then
+			    		declare -g STATUS+=("${BLUE}${2}${NC}")
+			    	elif [ "$2" = 'failed' ]; then
+			    		declare -g STATUS+=("${RED}${2}${NC}")
+			    	elif [ "$2" = 'incomplete' ]; then
+			    		declare -g STATUS+=("${RED}${2}${NC}")			    		
+			    	elif [ "$2" = 'success' ]; then
+			    		declare -g STATUS+=("${GREEN}${2}${NC}")			    		
+			    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
+			    		declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+			    	else
+			    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "success" "failed" "done" "incomplete". User input was "'${2}'"\n...exiting'
+			    	fi
+					shift
+				fi
+			else
+				[ ! ${STATUS} ] && declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+		    fi
+		    ;;		    
+		--subjects|-s)
+			if [ $# -gt 1 ]; then
+				shift				
+			else
+				echo -e "${BRED}\nERROR: ${NC}-s --subjects requires a non empty option argument." >&2
+				exit 1		
+			fi
+		    ;;		    			
+		--deface|-df)
+			DEFACE='defacefiles'
+		    if [ -n "$2" ]; then
+				if [ "$(echo "$2" | grep '^-')" ]; then
+					DEFACEFILES=('orig' 'T1' '001')
+				else
+					declare -g DEFACEFILES+=("${2}")
+					shift
+				fi		    	
+			else
+				DEFACEFILES=('orig' 'T1' '001')
+		    fi			
+			;;								    	    	
+		--convert-vol|-cv)
 			CONVERTVOL='yes'
 		    if [ -n "$2" ]; then
 				if [ "$(echo "$2" | grep '^-')" ]; then
-					CONVERTVOLFILES='orig T1 001'	
+					declare -g CONVERTVOLFILES=("orig" "T1" "001")
 				else
-					CONVERTVOLFILES+=("${2}")
+					declare -g CONVERTVOLFILES+=("${2}")
 					shift
 				fi		    	
 			else
-				CONVERTVOLFILES='orig T1 001'
+				declare -g CONVERTVOLFILES=("orig" "T1" "001")
 		    fi			
 			;;
-		--convert-surf)
+		--convert-surf|-cs)
 			CONVERTSURF='yes'
 		    if [ -n "$2" ]; then
 				if [ "$(echo "$2" | grep '^-')" ]; then
-					CONVERTSURFFILES='lh.pial lh.white rh.pial rh.white'	
+					declare -g CONVERTSURFFILES=("lh.pial" "lh.white" "rh.inflated" "rh.pial" "rh.white" "rh.inflated")
 				else
-					CONVERTSURFFILES+=("${2}")
+					declare -g CONVERTSURFFILES+=("${2}")
 					shift
 				fi		    	
 			else
-				CONVERTSURFFILES='lh.pial lh.white rh.pial rh.white'
+				declare -g CONVERTSURFFILES=("lh.pial" "lh.white" "lh.inflated" "rh.pial" "rh.white" "rh.inflated")
 		    fi			
 			;;			
-		--in_type)
+		--in_ext|-ie)
 		    if [ -n "$2" ]; then
 				IEXT="${2}"
 				shift
 			else
-				echo -e "${BRED}ERROR: ${NC}--in_type requires a non empty option argument.\n" >&2
-				exit				
+				echo -e "${BRED}ERROR: ${NC}--in_ext requires a non empty option argument.\n" >&2
+				exit 1				
 		    fi		
 			;;
-		--out_type)			
+		--out_ext|-oe)			
 		    if [ -n "$2" ]; then
 				OEXT="${2}"
 				shift
 			else
-				echo -e "${BRED}ERROR: ${NC}--out_type requires a non empty option argument.\n" >&2
-				exit				
+				echo -e "${BRED}ERROR: ${NC}--out_ext requires a non empty option argument.\n" >&2
+				exit 1			
 		    fi		
 			;;
-		--deface)
-			DEFACE='defacefiles'
-		    if [ -n "$2" ]; then
-				if [ "$(echo "$2" | grep '^-')" ]; then
-					DEFACEFILES='orig T1 001'	
-				else
-					DEFACEFILES+=("${2}")
-					shift
-				fi		    	
-			else
-				DEFACEFILES='orig T1 001'
-		    fi			
-			;;
-		--edits-summary)
-			SUMMARYEDITS='summarizetheedits'
-			;;						
-	    --stats)
-			RECONSTATS='getdetails'
-		    ;;					    						    	
-		--no-colors|--plain|-nc)
-			PRETTY='plainjane' && surfergems_defaults
-			;;
-	    --kill-jobs)
-			KILLJOBS='stopActiveSGEJobs'
-		    if [ -n "$2" ]; then
-				KILLPATTERN="${2}"
-				shift
-		    fi			
-		    ;;			
-	    -v|--verbose)
-			VERBOSE='givemeinfo'
-		    ;;
-		--web-report)
+		--web-report|-wr)
 		    if [ -n "$2" ] && [ ! $(echo ${2} | grep -e '^-') ] ; then
 		    	if [ "$2" = 'active' ]; then
-		    		STATUS+=("${GREY}${2}${NC}")
+		    		declare -g STATUS+=("${GREY}${2}${NC}")
 		    	elif [ "$2" = 'done' ]; then
-		    		STATUS+=("${GREEN}${2}${NC}")
+		    		declare -g STATUS+=("${GREEN}${2}${NC}")
 		    	elif [ "$2" = 'failed' ]; then
-		    		STATUS+=("${YELLOW}${2}${NC}")
+		    		declare -g STATUS+=("${YELLOW}${2}${NC}")
 		    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
-		    		STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+		    		declare -g STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
 		    	else
 		    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
+		    		exit 1
 		    	fi
 		    	shift
 			else
-				STATUS=("${GREEN}done${NC}")
+				declare -g STATUS=("${GREEN}done${NC}")
 		    fi
 			HTMLREPORT='makereport'
 			;;
 		--web-report-dir|-wrd)
 		    if [ -n "$2" ]; then
-		    	echo 'test='${2}
 				REPORTDIR="${2}" && HTMLREPORT='makereport'
 				shift
 			else
 				echo -e "${BRED}ERROR: ${NC}--web-report-dir -wrd requires a non empty option argument.\n" >&2
-				exit				
+				exit 1	
 		    fi
-			;;					    
-		-sd|--subjects_dir)
-		    if [ -n "$2" ]; then
-				export SUBJECTS_DIR=${2}
-				shift
-		    else
-				echo -e "${BRED}ERROR: ${NC}-sd --subjects-dir requires a non empty option argument.\n" >&2
-				exit
-		    fi
+			;;					    		    				    		    	    		    					
+	    -log|--log|-l|--debug|-debug|-d)
+			DEBUG="${SOURCEPATH}/surfergems.runtime"
 		    ;;
-		-s|--subjects)
-			if [ $# -gt 1 ]; then
-				shift
-				SUBJECTS=($(comm -12 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $@)))
-				local NOMATCH=$(comm -13 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $(printf '%s\n' $@ | sed -E 's|^-.*||g')))
-				if [ ! "${SUBJECTS}" ] || [ "${NOMATCH}" ]; then
-					echo -e "\n${YELLOW} ⚠️  WARNING: ${NC}Subject $(printf '"%s" ' ${NOMATCH})not found in ${SUBJECTS_DIR}"
-					[ ${#SUBJECTS[@]} -lt 1 ] && exit
-				fi				
-			else
-				echo -e "${BRED}\nERROR: ${NC}-s --subjects requires a non empty option argument." >&2
-				exit				
-			fi
-			#STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
-		    ;;		    			
-	    --status)
-		    if [ -n "$2" ]; then
-		    	if [ "$(echo "$2" | grep '^-')" ]; then
-		    		STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
-		    	else
-			    	if [ "$2" = 'active' ]; then
-			    		STATUS+=("${GREY}${2}${NC}")
-			    	elif [ "$2" = 'done' ]; then
-			    		STATUS+=("${GREEN}${2}${NC}")
-			    	elif [ "$2" = 'failed' ]; then
-			    		STATUS+=("${YELLOW}${2}${NC}")
-			    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
-			    		STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
-			    	else
-			    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "done" "failed". User input was "'${2}'"\n...exiting'
-			    	fi
-					shift
-				fi
-			else
-				[ ! ${STATUS} ] && STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
-		    fi
-		    ;;		    				    		    	    		    					
-		?|--usage|usage)
+	    --verbose|-v)
+			VERBOSE='givemeinfo'
+		    ;;
+		--no-colors|--plain|-nc)
+			PRETTY='plainjane' && surfergems_defaults
+			;;
+		\?|--usage|-usage|-u|usage)
 			HELP='help'
 			surfergems_usage
 			exit
 			;;
-		-h|--help|help)
+		--help|-help|-h|help)
 			HELP='more'
 			surfergems_usage
 			exit
-			;;			
-		?)
-		    printf '\n'${YELLOW}' Warning: '${NC}'Unknown option: "%s"\n..exiting' "${1}" >&2
-		    exit
-		    ;;
+			;;
 		*)
-		    break
+			echo $@
+		    printf '\n'${YELLOW}' Warning: '${NC}'Unknown option: "%s"\n' "${1}" >&2
+		  	;;
 	    esac
 	    shift
 	done
+	[ ${DEBUG} ] && echo -e "surfergems $(date)\n  🕷🔨 ${YELLOW}DEBUG STDOUT${GREY} $(date) surfergems_parseopts $@${BLUE}" > ${DEBUG}.out
+	[ ${DEBUG} ] && echo -e "surfergems $(date)\n  🕷🔨 ${YELLOW}DEBUG ERRORS${GREY} $(date) surfergems_parseopts $@${BLUE}" > ${DEBUG}.err	
 	if [ ! "${SUBJECTS}" ] && [ ! ${HELP} ]; then
-		echo -e "...checking SUBJECTS_DIR: ${SUBJECTS_DIR}" 
 		if [ -d ${SUBJECTS_DIR} ]; then
-			SUBJECTS=($(ls ${SUBJECTS_DIR}/*/scripts/recon-all.log | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}'))
+			declare -g SUBJECTS=($(find ${SUBJECTS_DIR} -name 'recon-all.log' | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}' | sort -u))
 		else
 			echo -e "\033[33;5m${BRED}ERROR: ${GREY}${SUBJECTS_DIR} does not exist\033[33;5m${NC}" >&2
 			exit
 		fi
-	fi	
-	echo $REPORTDIR	
+	fi		
 	[ ! "${REPORTDIR}" ] && REPORTDIR="${HOME}/Surfer-webgems"	
+	# check specified subjects exist in subjects dir
+	surfergems_verifysubs "${SUBJECTS[@]}" 2>>${debugerr} 
 }
+export -f surfergems_parseopts
+####################################################################################################################
+## DEFINE FUNCTION
+#  check for requirements and install them
+####################################################################################################################
+## TODO add conda + nilearn to dependencies 
 function surfergems_dependencies(){
+	## TODO -- hefty decision here, not all users may want to install this
+	# add prompt, proceed only if user accepts, problem with redirection of output?	
 	if [ $(uname) = 'Darwin' ]; then
+		# Install HomeBrew Package Manager
+		if [ -z $(which brew) ]; then
+			ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+			brew tap caskroom/cask
+		fi
+		# check for latest version of bash
+		if [ "$(bash --version | grep -oE "version.[0-9].*?" | head -n 1 | awk '{print $NF}')" -lt 4 ]; then
+			printf "${YELLOW}◀︎|⁃‣WARNING${NC}  Running Outdated Bash $(bash --version)"
+			brew install bash
+			sudo bash -c 'echo /usr/local/bin/bash >> /etc/shells'
+			sudo chsh -s /usr/local/bin/bash
+		fi
 		# check for coreutils
 		if [ ! $(brew list | grep 'coreutils') ]; then
 			brew install coreutils
@@ -2644,69 +3531,333 @@ function surfergems_dependencies(){
 			export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 			echo -e '\n#add coreutils to path\nexport PATH="/usr/local/opt/coreutils/libexec/gnubin:${PATH}"\nMANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"\n'  >> ${HOME}/.bash_profile
 		fi
+		if [ ! $(brew cask list | grep 'java') ]; then
+			brew cask install java
+		fi
+		if [ -z $(which parallel) ]; then
+			brew install parallel
+		fi	
+		if [ -z $(which zenity) ]; then
+			brew install zenity
+		fi				
 		# check date in path is coreutils date
 		if [ ! "$(date --version 2&> /dev/null | grep 'GNU coreutils')" ]; then
 			export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 			export MANPATH="/usr/local/opt/coreutils/libexec/gnuman:$MANPATH"
 		fi
+	elif [ $(uname) = 'Linux' ]; then
 		# check for parallel 
 		if [ -z $(which parallel) ]; then
-		    if [ $(uname) = 'Darwin' ]; then
-		        if [ -z $(which brew) ]; then
-		            ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
-		        fi
-		        brew install parallel
-		    elif [ $(uname) = 'Linux' ]; then
-		    	echo "GNU parallel does not exist on this system.. this installation is complicated.. please download->build first then run this again.. sorry! exiting.." && exit
-		    fi
+	    	## TODO compile for linux
+	    	echo "GNU parallel does not exist on this system.. this installation is complicated.. please download->build first then run this again.. sorry! exiting.." >2&
+	    	exit 1
 		fi
-		# check for freesurfer
-		if [ ! -d ${FREESURFER_HOME} ]; then
-			echo -e "\033[33;5m${BRED}ERROR: ${GREY}FreeSurfer Installation Check Failed! ${FREESURFER_HOME} does not exi\033[33;5m${NC}" >&2
-			exit
+		# TODO compile all utilities for LINUX
+	fi
+	# check for freesurfer (same across platforms)
+	if [ -z ${FREESURFER_HOME} ] || [ ! -d ${FREESURFER_HOME} ]; then
+		echo -e "\033[33;5m${BRED}ERROR: ${GREY}FreeSurfer Installation Check Failed! \n\t ⚒︎ \${FREESURFER_HOME} does not exist \n\t see: https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall\033[33;5m${NC}" >&2
+		exit 1
+	else
+		# print version information with verbose call
+		[ "${VERBOSE}" ] && echo -e "\033[33;5m${GREY}⍄ ${NC}${GREEN}$(cat ${FREESURFER_HOME}/VERSION)${NC}\n"
+		# check freesurfer version
+		if freesurfer --version | grep 'v6' > /dev/null; then
+			# check for patch
+			if mri_aparc2aseg --all-info | grep -oE '1.48.2.6' > /dev/null ; then
+				echo -e "\033[33;5m${YELLOW} Warning: ${NC}\t⚒︎ ${GREY}FreeSurfer v6.0.0 has not been patched!${NC}\n\t\t make average subject and aparc mapping to aseg may fail\n\t\t consider adding patched binaries to ${FREESURFER_HOME}/bin and setting 755 permissions..\n\t\t find updated binaries (mri_aparc2aseg, make_average_[subject|surface]) in ${SOURCEPATH}/bin/" >&2
+			else
+				[ "${VERBOSE}" ] && echo -e "\033[33;5m${GREEN} FreeSurfer v6.0.0 (patched) Detected with mri_aparc2aseg 1.48.2.6${NC}\n"
+			fi
+		elif freesurfer --version | grep 'v5' > /dev/null; then
+			echo -e "\033[33;5m${YELLOW} Warning: ${NC}\t⚒︎ ${GREY}Old FreeSurfer v5 Detected, consider upgrading to v6 \n\t see: https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall\033[33;5m${NC}" >&2
+		else
+			echo -e "\033[33;5m${YELLOW} Warning: ${NC}\t⚒︎ ${GREY}Unknown FreeSurfer Version Detected, consider installing v6.\n\t\t see: https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall\033[33;5m${NC}" >&2
+		fi		
+		# check if freesufer binaries are in path
+		if [ -z $(echo ${PATH} | grep "${FREESURFER_HOME}") ]; then
+			echo -e "\033[33;5m${YELLOW}WARNING: ${GREY}FreeSurfer Binaries are Not in Path! \n\t see: https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall\033[33;5m${NC}" >&2
 		fi
 	fi
+	# check java version 
+	if [ "$(java -version 2>&1 | grep -o "\"[0-9].?*\"" | sed 's|"||g')" -lt 7 ]; then
+		echo -e "\033[33;5m${YELLOW}WARNING: Java 7 or higher is required for web reports! $(java -version) installed ${NC}"  >&2
+	fi		
 }
-################################################################################################################
-################################################################################################################
-################################################################################################################
-######## TOP LEVEL FLOW CONTROL
-########
-########
-########
-################################################################################################################
-################################################################################################################
-function check-recons(){
-	# check dependencies
-	surfergems_dependencies
-	# parse user input
-	surfergems_parseopts "$@"
-	# defs
+export -f surfergems_dependencies
+####################################################################################################################
+### DEFINE FUNCTION
+#   Usage info
+####################################################################################################################
+##  TODO comprehensive explanation of input options and output
+function surfergems_usage(){
+	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_usage $@"
 	surfergems_defaults
-	# get location of program
-	surfergems_whereami	
-	# convert files if user asks
-	[ "${CONVERTVOL}" ] && surfergems_convert.NIFTI ${CONVERTVOLFILES} ${IEXT} ${OEXT}
-	[ "${CONVERTSURF}" ] && surfergems_convert.NIFTI ${CONVERTSURFFILES}
-	[ "${DEFACEFILES}" ] && surfergems_deface
-	[ "${SUMMARYEDITS}" ] && surfergems_subject-edits
-	# kill SGE jobs, delete isRunning files
-	## TODO - add ability to kill by pid (need intelligent ps aux matching)
-	[ "${KILLJOBS}" ] && surfergems_killJobs
-	# check file manifest of each subject
-	[ "${FILECHECK}" ] && surfergems_files && surfergems_printstatus
-	# check status of active/failed/done
-	[ "${STATUS[*]}" ] && [ ! "${FILECHECK}" ] && surfergems_status && surfergems_printstatus || [ "${VERBOSE}" ] && surfergems_printstatus_verbose
-	# get details of reconstruction statistics
-	[ "${RECONSTATS}" ] && surfergems_stats && surfergems_table
-	# make HTML webreport 
-	[ "${HTMLREPORT}" ] && surfergems_html #&& open ${REPORTDIR}/index.html
-	# [ ! -z "${RECONSTATS[*]}" ] && surfergems_buildtable
-	## PERFORM DIFF BETWEEN DIRS AND SUBJECTS WITH LOG FILES??
+read -r -d '' HELPMESSAGE <<EOF
+
+Usage :: ${0##*/} \n
+\n
+Operations\n
+\t --stats|-i \t print current status, run time, host\n
+\t --files|-f \t check subject data against file manifest\n
+\t --morph-stats|-ms volume|thickness|curv|... \t print morphometric statistics\n
+\t --make-average|-ma AVERAGENAME \t compute average subject (can specify list)\n
+\t --edits-summary|-es subject|group \t Summarize edits (default subject)
+\t --deface|-df BASENAME \t deface BASENAME\n
+\t --convert-vol BASENAME \t convert volumes (default: ${CONVERTVOLFILES}) \n
+\t --convert-surfs SURF \t convert volumes (default: ${CONVERTSURFFILES}) \n
+\t\t --iext \t required for conversion, input extension of files \n
+\t\t --oext \t required for conversion, output extension of files \n
+\n
+Filters for Operations\n
+\t --status|-st active|done|failed \t list jobs by status, can also be used to filter subjects for other commands \n 
+\t --subjects|-s LIST \t execute only on specified subjects, useful for filtering, (default: all in SUBJECTS_DIR) \n
+\t --subjects_dir|-sd SUBJECTS_DIR \t define subjects directory (default: ${SUBJECTS_DIR})\n
+\n
+Grid Management\n
+\t --kill-jobs PATTERN \t kills current jobs (default kill -9 ${KILLPATTERN}) and deletes IsRunning lockfiles\n
+\n
+Reports & Tables\n
+\t --web-report active|done|failed \t generate a web report \n
+\t --web-report-dir|-wrd DIR \t path to web report directory \n
+\n
+Miscallaneous\n
+\t --overwrite\t overwrite existin files \n
+\t --no-colors|--plain|-nc \t suppress my inner beauty \n
+\t --verbose|-v \t make everything much more detailed \n
+\t --debug|-d
+\n
+More Help\n
+\t --usage|usage -h|--help|help|?|\n
+EOF
+if [ "${HELP}" = 'more' ]; then
+read -r -d '' HELPMESSAGE <<EOF
+\n\033[33;5m✨\033[0m${BLUE}The Magical Surfer-gem Box${BLUE}\033[33;5m✨\033[0m\n\n
+
+This program contains a bounty of gems for working with FreeSurfer Datasets.
+
+\n\n ${BBLUE}■ ${GREY}Summarizing Jobs${NC}
+\n\n\t ${GREY}checking a single subject${NC}
+\n\t >> ${0##*/} -s SUBJECTID 
+\n\n\t ${GREY}also works for lists${NC}
+\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3
+\n\n\t ${GREY}get more information${NC}
+\n\t >> ${0##*/} -s SUBJECT-1 SUBJECT-2 SUBJECT-3 -v
+\n\n\t ${GREY}summarize all data in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} --status
+\n\n\t ${GREY}check only failed${NC}
+\n\t >> ${0##*/} --status failed
+\n\n\t ${GREY}check only currently running jobs${NC}
+\n\t >> ${0##*/} --status active
+\n\n\t ${GREY}check only completed jobs${NC}
+\n\t >> ${0##*/} --status done
+\n\n\t ${GREY}check only completed and failed jobs${NC}
+\n\t >> ${0##*/} --status failed --status done
+\n\n\t ${GREY}find which subjects in a list are completed${NC}
+\n\t >> ${0##*/} --status done -s SUBJECT-1 SUBJECT-2 SUBJECT-3
+\n\n\t${GREY} ℹ️   You can always add${NC} -v${GREY} for more information${NC}
+
+\n\n ${BBLUE}■ ${GREY}Check Data for Complete File Manifest${NC}
+\n\n\t ${GREY}check all subjects in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} -f
+\n\n\t ${GREY}print details about which files are missing for a specific subject ${NC}
+\n\t >> ${0##*/} -s SUBJECTID -f -v 
+
+\n\n ${BBLUE}■ ${GREY}Compile Summary Statistics${NC}
+\n\t >> ${0##*/} -s SUBJECTID --stats
+
+\n\n ${BBLUE}■ ${GREY}Convert MGZs into NII.GZ${NC}
+\n\t >> ${0##*/} -s SUBJECTID --convert
+\n\n\t ${GREY}leave off the SUBJECTID to convert all subjects in SUBJECTS_DIR${NC} -v
+\n\t >> ${0##*/} --convert
+
+\n\n ${BBLUE}■ ${GREY}Deface Identifying Images for all in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} --deface
+\n\n\t ${GREY}or just deface a specific subject${NC}
+\n\t >> ${0##*/} -s SUBJECTID --deface
+\n\n\t ${GREY}specify the basename of volumes to deface${NC}
+\n\t >> ${0##*/} -s SUBJECTID --deface 001 --deface T1
+
+\n\n ${BBLUE}■ ${GREY}Create HTML webreport with Surfer-webgems for all in SUBJECTS_DIR${NC}
+\n\t >> ${0##*/} --web-report --web-report-dir ~/My-Demo-WebReport
+\n\n\t ${GREY}or just make for specific subject(s)${NC}
+\n\t >> ${0##*/} -s SUBJECTID --web-report 'done' --we-report-dir ~/SUBJECTID-WebReport
+
+\n\n ${BBLUE}■ ${GREY}Getting Help${NC}
+\n\t >> ${0##*/}
+\n\t >> ${0##*/} -h
+\n\t >> ${0##*/} -u
+\n\t >> ${0##*/} --help
+\n\t >> ${0##*/} --usage
+
+\n\n ${BBLUE}■ ${GREY}No Colors (Plain Text)${NC}
+\n\t >> ${0##*/} -nc  --help
+\n\t >> ${0##*/} -s SUBJECTID -nc
+
+EOF
+	echo -e ${HELPMESSAGE} | fold -w 200 -s # print and wrap
+else
+	echo -e ${HELPMESSAGE} |  column -s $'\t' -t | fold -w 200 -s # print and wrap
+fi
 }
-check-recons "$@"
-echo -e "\n the task was completed in ${SECONDS} seconds"
-echo -e "\n👤 $(whoami)@$(hostname)\n🗓  $(date)"
+export -f surfergems_usage
+####################################################################################################################
+## DEFINE FUNCTION
+#  TOP LEVEL FLOW CONTROL
+###############################
+function surfergems(){	
+	# check subject status
+	if [ ! ${STATUSCHECK} ] && [ ${STATUS} ]; then
+		(if surfergems_status 2>> ${debugerr}
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_status\n" >> ${debugout}
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_status FAILED\n" >>${debugerr} >&2
+			echo 'return 1' > /tmp/surfergems-return-val	
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+	fi	
+	# check for file manifest
+	if [ ${FILECHECK} ]; then
+		(if surfergems_files 2>> ${debugerr}
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_files\n" >> ${debugout}
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_files FAILED\n" >>${debugerr} >&2
+			echo 'return 1' > /tmp/surfergems-return-val	
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+	fi		
+	# get statistics for jobs
+	if [ ${RECONSTATS} ]; then
+		(if surfergems_stats "${SUBJECTS[@]}" 4>>${debugout} 2>>${debugerr} 
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  surfergems_stats ${SUBJECTS[@]}\n" >> ${debugout}
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_stats ${SUBJECTS[@]} FAILED\n" >> ${debugerr}
+			echo 'return 1' > /tmp/surfergems-return-val	
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+	fi
+	# get morphometric statistics
+	if [ ${MORPHSTATS} ]; then
+		(if surfergems_morph_stats "${SUBJECTS[@]}" 4>>${debugout} 2>>${debugerr} 
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  surfergems_morph_stats ${SUBJECTS[@]}\n" >> ${debugout}
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_morph_stats ${SUBJECTS[@]} FAILED\n" >> ${debugerr}
+			echo 'return 1' > /tmp/surfergems-return-val	
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+	fi	
+	# # create edit summaries		
+	if [ ${EDITSUMMARY} ]; then 
+		(if parallel -k --link surfergems_subject_edits ::: ${SUBJECTS[@]}  4>>${debugout} 2>>${debugerr} >(zenity --progress --pulsate --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Edits" --text="<span>Summarizing Edits</span>" --width=300 --height=100)
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} surfergems_subject_edits\n" >> ${debugout}			
+				echo 'return 0' > /tmp/surfergems-return-val
+			if [ ${EDITSUMMARY} = 'group' ]; then 
+				if surfergems_group_edits; then
+					printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC} surfergems_group_edits\n" >> ${debugout}
+					echo 'return 0' > /tmp/surfergems-return-val
+				else
+					printf "\r${BRED}◀︎|⁃‣ERROR${NC}  Group Edits surfergems_group_edits FAILED\n" >> ${debugerr}
+					echo 'return 1' > /tmp/surfergems-return-val
+				fi
+			fi
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_subject_edits FAILED\n" >> ${debugerr}
+			return 1
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+	fi
+	# kill SGE jobs, delete isRunning files
+	if [ ${KILLJOBS} ]; then
+		if (surfergems_killJobs | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr}
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  Kill Jobs\n" >> ${debugout}
+			return 0
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  Kill Jobs Failed\n" >> ${debugerr}
+			return 1
+		fi		
+	fi		
+	# convert files
+	local convert=''
+	if [ ! -z "${CONVERTVOL}" ] || [ ! -z "${CONVERTSURF}" ]; then 
+		[ ! -z "${CONVERTVOL}" ] && convert+='vol'		
+		[ ! -z "${CONVERTSURF}" ] && convert+='surf '
+		[ -z ${IEXT} ] && IEXT='null'
+		for c in ${convert}; do
+			# populate with user input / default values
+			[ "${c}" = 'vol' ] && local files=${CONVERTVOLFILES[@]}		
+			[ "${c}" = 'surf' ] && local files=${CONVERTSURFFILES[@]}		
+			# switch default file ext from vol to surf
+			[ "${c}" = 'surf' ] && [ "${IEXT}" = 'mgz' ] && IEXT='null'
+			[ "${c}" = 'surf' ] && [ "${OEXT}" = 'nii.gz' ] && OEXT='gii'
+			# parent command is grouped in subshell to capture exit status within if/else prior to tee
+			# exit status is needed to access ERROR message
+			# subshells can't export variables (no return), so need to write status to file and exe outside
+			(if parallel -k --link surfergems_convert ${c} ${IEXT} ${OEXT} {} ${files} ::: ${SUBJECTS[@]} 4>>${debugout} 2>>${debugerr} >(zenity --progress --pulsate --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Convert" --text="<span>Converting Files to ${OEXT}</span>" --width=300 --height=100)
+			then
+				printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  parallel -k --link surfergems_convert ${IEXT} ${OEXT} {} ${CONVERTVOLFILES[*]} ::: ${SUBJECTS[*]}${NC}\n" >> ${debugout}
+				echo -e "\n${GREEN}◀︎|⁃‣${GREY}Conversion Complete${NC}"
+				echo 'return 0' > /tmp/surfergems-return-val
+			else
+				printf "\r${BRED}◀︎|⁃‣ERROR${NC}  parallel -k --link surfergems_convert ${IEXT} ${OEXT} {} ${CONVERTVOLFILES[*]} ::: ${SUBJECTS[*]}\n" >>${debugerr} >&2
+				echo 'return 1' > /tmp/surfergems-return-val
+			fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)
+		done
+	fi
+	# anonymize subjects
+	if [ "${DEFACE}" ]; then 
+		(if parallel -k --link surfergems_deface {} ${IEXT} ${DEFACEFILES[@]} ::: ${SUBJECTS[@]}  4>>${debugout} 2>>${debugerr} >(zenity --progress --pulsate --auto-kill --auto-close --title="💎🏄‍♂️ Surfer Gems | Deface" --text="Defacing ${DEFACEFILES[@]}" --width=300 --height=100)
+		then
+			printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  parallel -k --link surfergems_deface {} ${DEFACEFILES[@]} ::: ${SUBJECTS[*]}${NC}\n" >> ${debugout}
+			echo -e "\n${GREEN}◀︎|⁃‣${GREY}Deface Complete${NC}\n"
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "${BRED}◀︎|⁃‣ERROR${NC}  parallel -k --link surfergems_deface {} ${DEFACEFILES[@]} ::: ${SUBJECTS[*]}${NC}\n" >>${debugerr} >&2
+			echo 'return 1' > /tmp/surfergems-return-val
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)		
+	fi		
+	return 0		
+	# # make HTML webreport	
+	if [ "${HTMLREPORT}" ]; then
+		(if surfergems_html 2>> ${debugerr}
+		then
+			printf "\r${GREEN}◀︎|⁃‣SUCCESS${GREY}  surfergems_status\n" >> ${debugout}
+			open ${REPORTDIR}/index.html
+			echo 'return 0' > /tmp/surfergems-return-val
+		else
+			printf "\r${BRED}◀︎|⁃‣ERROR${NC}  surfergems_status FAILED\n" >>${debugerr} >&2
+			echo 'return 1' > /tmp/surfergems-return-val	
+		fi | tee -a ${debugout}) 3>&1 1>&2 2>&3 | tee -a ${debugerr} && eval $(cat /tmp/surfergems-return-val)			
+	fi  
+	# [ "${HTMLREPORT}" ] && surfergems_html #&& 
+}
+export -f surfergems
+#############################
+#### MAIN BODY
+#### (fx called here)
+#############################
+# check dependencies
+# if surfergems_dependencies; then
+# 	printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  Dependency Check\n" >> ${debugout}
+# else
+# 	printf "\r${BRED}◀︎|⁃‣ERROR${NC}  Dependency Check Failed\n" >> ${debugerr}
+# fi
+# trace call path
+surfergems_whereami	
+# parse user input	
+surfergems_parseopts "$@"
+##### do yo thangs surfa manes 🏄‍♂️
+if surfergems "$@"; then
+	echo -e "\n⌛️ the task was completed in ${SECONDS} seconds"
+	echo -e "\n👤 $(whoami)@$(hostname)\n🗓  $(date)"
+else
+	printf "${BRED}◀︎|⁃‣ERROR${NC} $(echo surfergems "$@") FAILED\n"
+fi
+[ ${DEBUG} ] && echo -e "\n${GREY}Writing debugging log${NC}\n OUTPUT :: ${DEBUG}.out\n ERROR :: ${DEBUG}.err"		
 ################################################################################################################
 ################################################################################################################
 ################################################################################################################
