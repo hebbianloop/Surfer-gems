@@ -110,7 +110,7 @@ function surfergems_defaults(){
 	[ ! "${CONVERTSURFFILES}" ] && declare -g CONVERTSURFFILES=("")
 	[ ! "${CONVERTVOLFILES}" ] && declare -g CONVERTVOLFILES=("")
 	#  pre-allocate variables here to fill later
-	>>${debugerr} echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_defaults $@"
+	#>>${debugerr} echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_defaults $@"
 }
 export -f surfergems_defaults
 ####################################################################################################################
@@ -300,7 +300,7 @@ function surfergems_status(){
 	if [ ! "${SUBJECTS}" ]; then
 		printf "◀︎|⁃‣ No Subjects found in ${SUBJECTS_DIR} with status %s\n" $(echo -e "${STATUS[@]}")
 	fi
-	if [ "$(echo ${STATUS[*]} | grep 'incomplete')" ] || [ "$(echo ${STATUS[*]} | grep 'done')" ]; then
+	if [ "$(echo ${STATUS[*]} | grep 'incomplete')" ] || [ "$(echo ${STATUS[*]} | grep 'complete')" ]; then
 		surfergems_files
 	fi
 	# signal that the status has been checked (prevents this from being run twice when called to populate an empty subjects variable that may be empty anyway bc none satisfy conditions (i.e. failed))
@@ -1356,7 +1356,6 @@ function surfergems_html_init(){
 		>&2 printf "${BRED}◀︎|⁃‣ERROR${NC} ${GREY}parallel -k --link surfergems_html_papaya {} ${REPORTDIR} ${MGZs[@]} ::: ${SUBJECTS[@]}${NC} FAILED\n" 
 		echo 'return 1' > /tmp/surfergems-return-val
 	fi	| tee -a "${debugout}") 3>&1 1>&2 2>&3 | tee -a "${debugerr}" && eval "$(cat /tmp/surfergems-return-val)"	
-	exit	
 	#######################################
 	## Initialize INDEX
 	#######################################
@@ -3418,7 +3417,7 @@ function surfergems_parseopts(){
 		    	else
 			    	if [ "$2" = 'active' ]; then
 			    		declare -g STATUS+=("${GREY}${2}${NC}")
-			    	elif [ "$2" = 'done' ]; then
+			    	elif [ "$2" = 'complete' ]; then
 			    		declare -g STATUS+=("${BLUE}${2}${NC}")
 			    	elif [ "$2" = 'failed' ]; then
 			    		declare -g STATUS+=("${RED}${2}${NC}")
@@ -3847,35 +3846,34 @@ read -r -d '' HELPMESSAGE <<EOF
 \n
 ${GREY}Usage :: ${0##*/} [--status|-st|--subjects|-s|--subjects_dir|-sd|--stats|-i|--files|-f|--morph-stats|-ms|--make-average|-ma|--edits-summary|-es|--deface|-df|--convert-vol|--convert-surfs|--oext|--iext|--web-report|-wr|--web-report-dir|-wrd|--overwrite|--no-colors|--plain|-nc|--verbose|-v|--debug|--log|-d|--usage] \n
 \n
-\n
 \tOperations\n
-\t --stats|-i  print current status, run time, host\n
-\t --files|-f  check subject data against file manifest\n
-\t --morph-stats|-ms VOLUME|THICKNESS|CURV|...  print morphometric statistics\n
-\t --make-average|-ma AVERAGENAME  compute average subject (can specify list)\n
-\t --edits-summary|-es SUBJECT|GROUP Summarize edits (default subject)
+\t --stats|-i             print current status, run time, host\n
+\t --files|-f             check subject data against file manifest\n
+\t --morph-stats|-ms      VOLUME|THICKNESS|CURV|...  print morphometric statistics\n
+\t --make-average|-ma     AVERAGENAME  compute average subject (can specify list)\n
+\t --edits-summary|-es    SUBJECT|GROUP Summarize edits (default subject)
 \t --deface|-df BASENAME  remove face from BASENAME\n
 \t --convert-vol BASENAME convert volumes (default: ${CONVERTVOLFILES}) \n
-\t --convert-surfs SURF convert volumes (default: ${CONVERTSURFFILES}) \n
-\t\t --iext required for conversion, input extension of files \n
-\t\t --oext required for conversion, output extension of files \n
+\t --convert-surfs SURF   convert volumes (default: ${CONVERTSURFFILES}) \n
+\t\t --iext                required for conversion, input extension of files \n
+\t\t --oext                required for conversion, output extension of files \n
 \n
 \tFilters for Operations\n
-\t --status|-st active|done|failed list jobs by status, can also be used to filter subjects for other commands \n 
-\t --subjects|-s LIST execute only on specified subjects, useful for filtering, (default: all in SUBJECTS_DIR) \n
-\t --subjects_dir|-sd SUBJECTS_DIR define subjects directory (default: ${SUBJECTS_DIR})\n
+\t --status|-st           active|done|failed list jobs by status, can also be used to filter subjects for other commands \n 
+\t --subjects|-s LIST     execute only on specified subjects, useful for filtering, (default: all in SUBJECTS_DIR) \n
+\t --subjects_dir|-sd     SUBJECTS_DIR define subjects directory (default: ${SUBJECTS_DIR})\n
 \n
 \tGrid Management\n
-\t --kill-jobs PATTERN kills current jobs (default kill -9 ${KILLPATTERN}) and deletes IsRunning lockfiles\n
+\t --kill-jobs PATTERN    kills current jobs (default kill -9 ${KILLPATTERN}) and deletes IsRunning lockfiles\n
 \n
 \tReports & Tables\n
-\t --web-report active|done|failed generate a web report \n
-\t --web-report-dir|-wrd DIR path to web report directory \n
+\t --web-report active|done|failed      generate a web report \n
+\t --web-report-dir|-wrd DIR            path to web report directory \n
 \n
 \tMiscallaneous\n
-\t --overwrite overwrite existin files \n
-\t --no-colors|--plain|-nc suppress my inner beauty \n
-\t --verbose|-v make everything much more detailed \n
+\t --overwrite                  overwrite existing files 
+\t --no-colors|--plain|-nc      suppress my inner beauty
+\t --verbose|-v                 make everything much more detailed
 \t --debug|-d
 \n
 \tMore Help\n
@@ -3916,9 +3914,9 @@ This program contains a bounty of gems for working with FreeSurfer Datasets.
 \n\t${GREY} ℹ️   You can always add${NC} -v${GREY} for more information${NC}
 
 \n ${BBLUE}■ ${GREY}Check Data for Complete File Manifest${NC}
-\n\t ${YELLOW}⏣${GREY}check all subjects in SUBJECTS_DIR${NC}
+\n\t ${YELLOW}⏣ ${GREY}check all subjects in SUBJECTS_DIR${NC}
 \t >> ${0##*/} -f
-\n\t ${YELLOW}⏣${GREY}print details about which files are missing for a specific subject ${NC}
+\n\t ${YELLOW}⏣ ${GREY}print details about which files are missing for a specific subject ${NC}
 \t >> ${0##*/} -s SUBJECTID -f -v 
 
 \n ${BBLUE}■ ${GREY}Compile Summary Statistics${NC}
@@ -3926,9 +3924,9 @@ This program contains a bounty of gems for working with FreeSurfer Datasets.
 
 \n ${BBLUE}■ ${GREY}Convert Default MGZs (001, T1, orig) from .MGZ into NII.GZ${NC}
 \t >> ${0##*/} -s SUBJECTID --convert-vol
-\n\t ${YELLOW}⏣ ${GREY}leave off the SUBJECTID to convert all subjects in SUBJECTS_DIR${NC} -v
+\n\t ${YELLOW}⏣ ${GREY}leave off the SUBJECTID to convert all subjects in SUBJECTS_DIR${NC}
 \t >> ${0##*/} --convert-vol
-\n\t ${YELLOW}⏣ ${GREY}covnert specific volume${NC} -v
+\n\t ${YELLOW}⏣ ${GREY}convert specific volume${NC}
 \t >> ${0##*/} --convert-vol myatlas --convert-vol results -ie mgz -oe nii.gz
 \n\t${GREY} ℹ️   appropriate extensions include ${BLUE} mgz, nii.gz, brik, ${GREY}etc.(see mri_convert)${NC}
 
@@ -3956,15 +3954,16 @@ This program contains a bounty of gems for working with FreeSurfer Datasets.
 \t >> ${0##*/} -u
 \t >> ${0##*/} --help
 \t >> ${0##*/} --usage
+
 \t ${YELLOW}⏣ ${GREY}Use debug option to print errors / output to log file ${NC} -v
 \t >> ${0##*/} --debug
 
 \n ${BBLUE}■ ${GREY}No Colors (Plain Text)${NC}
 \t >> ${0##*/} -nc  --help
 \t >> ${0##*/} -s SUBJECTID -nc
-
+\n\n
 EOF
-	echo -e "${HELPMESSAGE}" | fold -w $(tput cols) -s # print and wrap
+	echo -e "${HELPMESSAGE}" > /tmp/surfergems.help && cat /tmp/surfergems.help | fold -w $(tput cols) # print and wrap
 else
 	echo -e "${HELPMESSAGE}" |  column -s $'\t' -t | fold -w 200 -s # print and wrap
 fi
