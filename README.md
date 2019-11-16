@@ -10,6 +10,9 @@ Simply clone this repository and add it to your bash path by including the follo
 ## Usage
 Want to help us fill this in? See _Contributing_ below.
 
+## Web Reports
+See https://seldamat.github.io/Surfer-webgems for a demo of web reports.
+
 ## Contributing
 1. Fork it!
 2. Create your feature branch: `git checkout -b my-new-feature`
