@@ -6,7 +6,9 @@
 ## Installation
 Simply clone this repository and add it to your bash path by including the following line your `.bash_profile`
 > `export PATH="<PATHTOSURFERGEMS>/:$PATH"`
-
+Then enter the command
+`surfer-gems --install`
+to check for and install missing dependencies
 ## Usage
 Want to help us fill this in? See _Contributing_ below.
 
