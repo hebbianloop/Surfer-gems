@@ -1,4 +1,5 @@
 # Start with base freesurfer container
+# build from directory containing surfergems (path is relative)
 FROM vistalab/freesurfer
 
 RUN apt-get update && apt-get install -y openjdk-7-jre-headless \
