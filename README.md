@@ -1,25 +1,21 @@
 <snippet>
   <content>
+    
 # 💎🏄 Surfer-gems 
-A collection of tools for automating routine tasks &amp; performing analysis with the FreeSurfer software package.
+    A collection of tools for automating routine tasks & performing analysis with the FreeSurfer software package.
 ## Installation
 Simply clone this repository and add it to your bash path by including the following line your `.bash_profile`
 > `export PATH="<PATHTOSURFERGEMS>/:$PATH"`
 
-## Contents
-- `launchfv`          -- Command line wrapper for freeview app
-- `FS-stats`          -- Generates concatenated tables of morphometry statistics across FreeSurfer processed subjects
-- `FSQC-summary`      -- Generates QC data for a single subject.
-- `FSQC-check`        -- Generates QC data for a list of subjects and writes a list of subjects with failed analyses.  
-- `FSQC-makehtml`     -- Generate webpage with screenshots of final subject reconstructions
-- `recon-all-go`      -- Serial script for batch FreeSurfer processing
-- `recon-all-pargo`   -- GNU parallel wrapper for batch FreeSurfer processing
-- `recon-all-base`    -- Serial script for batch longitudinal FreeSurfer processing
-- `execute_freesurfer_pipeline` -- Script that executes all freesurfer pipeline steps
-- doc               -- LaTeX folder for FreeSurfer documentation
+Then enter the command
+> `surfer-gems --install`
 
-## History
-A more complete version history can be found at www.github.com/seldamat/SNIR.  Many of these executables were copied from the SNIR repo and consolidated into a FreeSurfer-specific repository.  All modifications and edits to the software will appear in this repo first.
+to check for and install missing dependencies
+## Usage
+Want to help us fill this in? See _Contributing_ below.
+
+## Web Reports
+See https://seldamat.github.io/Surfer-webgems for a demo of web reports.
 
 ## Contributing
 1. Fork it!
@@ -30,6 +26,9 @@ A more complete version history can be found at www.github.com/seldamat/SNIR.  M
 
 ## Credits
 The software in this repo was developed with great help from the FreeSurfer wiki, mailing list and numerous online resources.
+
+Thanks to Pierre Bellec for suggestions on using nilearn html generation code for visualizing surfaces with javascript.
+Thanks to @akeshevan for help with papaya web viewer and FS lookup table
 
 </content>
 </snippet>
