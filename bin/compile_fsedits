@@ -1,0 +1,137 @@
+#!/bin/bash
+##
+## This script compiles edits across individuals projected on a group template
+
+# compile for a single subject
+function compile_SubjectEdits() {
+	local subject=${1}
+	local template=${2}
+	local antsopts=${3}
+	if [ ! -f "${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz" ] && [ -f "${SUBJECTS_DIR}/${subject}/mri/brainmask.mgz" ]; then
+		${FREESURFER_HOME}/bin/mri_convert ${SUBJECTS_DIR}/${subject}/mri/brainmask.mgz ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz > /dev/null
+	else
+		echo -e "\033[33;5m${BRED}ERROR: ${SUBJECTS_DIR}/${subject}/mri/brainmask[.mgz|.nii.gz] does not exist\033[33;5m\033[0m" >&2
+	if [ ${EDITS} = 'brainmask' ]; then
+		# 1. extract erasures (voxel value = 1)
+		fslmaths ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz -uthr 1 -bin ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz
+		# 2. threshold edits out (eraser value = 1)
+		fslmaths ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz -thr 2 ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz
+		# 3. warp clean brainmasks to template space  
+		antsIntroduction.sh -d 3 \
+							-i ${SUBJECTS_DIR}/${subject}/mri/brainmask.nii.gz\
+							-r ${TEMPLATE} \
+							-o ${SUBJECTS_DIR}/${subject}/mri/brainmask_warped_ \
+							${antsopts}
+		# 4. binarize to create warped mask
+		fslmaths ${SUBJECTS_DIR}/${subject}/mri/brainmask_warped_deformed.nii.gz \
+				-bin ${SUBJECTS_DIR}/${subject}/mri/brainmask_warped_deformed_mask.nii.gz							
+		# 5. warp edits to template space using affine + warp 
+		antsApplyTransforms -d 3 \
+						-o ${SUBJECTS_DIR}/${subject}/mri/brainmask_edits_warped.nii.gz \
+						-i ${SUBJECTS_DIR}/${subject}/mri/brainmask_edits.nii.gz \
+						-r ${TEMPLATE} \
+						-t ${SUBJECTS_DIR}/${subject}/mri/brainmask_warped_Warp.nii.gz \
+						-t ${SUBJECTS_DIR}/${subject}/mri/brainmask_warped_Affine.txt \
+						--verbose 1
+		fslmaths ${SUBJECTS_DIR}/${subject}/mri/brainmask_edits_warped.nii.gz -bin ${SUBJECTS_DIR}/${subject}/mri/brainmask_edits_warped.nii.gz
+	elif [[ ${EDITS} = 'aseg' ]]; then
+		echo 'feature not available'
+	elif [[ ${EDITS} = 'white' ]]; then
+		echo 'feature not available'		
+	fi
+}
+export -f compile_SubjectEdits
+# add up masks of all participants in template space
+function compile_GroupEdits(){
+	# add across participants 
+	fsladd ${SUBJECTS_DIR}/brainmask_sum.nii.gz $(find ${SUBJECTS_DIR} -name 'brainmask_warped_deformed_mask.nii.gz')
+	fsladd ${SUBJECTS_DIR}/brainmask_edits_sum.nii.gz $(find ${SUBJECTS_DIR} -name 'brainmask_edits_warped_deformed.nii.gz')
+	# compute probability map
+	NUMSUB=$(find ${SUBJECTS_DIR} -name 'brainmask_warped_deformed.nii.gz' | wc -l)
+	fslmaths ${SUBJECTS_DIR}/brainmask_sum.nii.gz  -div ${NUMSUB}  ${SUBJECTS_DIR}/brainmask_prior.nii.gz
+	NUMSUB=$(find ${SUBJECTS_DIR} -name 'brainmask_edits_warped_deformed.nii.gz' | wc -l)
+	fslmaths ${SUBJECTS_DIR}/brainmask_edits_sum.nii.gz  -div ${NUMSUB}  ${SUBJECTS_DIR}/brainmask_edits_probability_map.nii.gz
+}
+# parse inputs options
+function parseOpts() {
+	# Parse Options
+	while :; do
+	    case $1 in
+		-h|--help)
+		    show_help
+		    exit
+		    ;;    	    
+		-sd|--subjects_dir)
+		    if [ -n "$2" ]; then
+				export SUBJECTS_DIR=${2}
+				shift
+		    else
+				echo -e "${BRED}ERROR: ${NC}-sd --subjects-dir requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;
+		-s|--subjects)
+			if [ $# -gt 1 ]; then
+				shift
+				SUBJECTS=($(comm -12 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $@)))
+				local NOMATCH=$(comm -13 --nocheck-order <(printf '%s\n' "${SUBJECTS[@]}") <(printf '%s\n' $(printf '%s\n' $@ | sed -E 's|^-.*||g')))
+				if [ ! "${SUBJECTS}" ] || [ "${NOMATCH}" ]; then
+					echo -e "\n${YELLOW} ⚠️  WARNING: ${NC}Subject $(printf '"%s" ' ${NOMATCH})not found in ${SUBJECTS_DIR}"
+					[ ${#SUBJECTS[@]} -lt 1 ] && exit
+				fi				
+			else
+				echo -e "${BRED}\nERROR: ${NC}-s --subjects requires a non empty option argument." >&2
+				exit				
+			fi
+			#STATUS=("${GREY}active${NC}" "${GREEN}done${NC}" "${YELLOW}failed${NC}")
+		    ;;	
+		-t|--template)
+		    if [ -n "$2" ]; then
+				TEMPLATE=$2
+				shift
+		    else
+				echo "ERROR: -t --template requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;	 
+		-ao|--ants-opts)
+		    if [ -n "$2" ]; then
+				ANTSOPTS=$2
+				shift
+		    else
+				echo "ERROR: -ao --ants-opts requires a non empty option argument.\n" >&2
+				exit
+		    fi
+		    ;;	 		       	    
+		-?*)
+		    printf 'Warn: Unknown option (ignored): %s\n' "%1" >&2
+		    ;;
+		*)
+		    break
+	    esac
+
+	    shift
+	done	
+	if [ ! "${SUBJECTS}" ] && [ ! ${HELP} ]; then
+		echo -e "...checking SUBJECTS_DIR: ${SUBJECTS_DIR}" 
+		if [ -d ${SUBJECTS_DIR} ]; then
+			SUBJECTS=($(ls ${SUBJECTS_DIR}/*/scripts/recon-all.log | awk '{print $NF}' | sed "s|${SUBJECTS_DIR}||g" | sed "s|/| |g" | awk '{print $1}'))
+		else
+			echo -e "\033[33;5m${BRED}ERROR: ${GREY}${SUBJECTS_DIR} does not exist\033[33;5m\033[0m" >&2
+			exit
+		fi
+	fi
+}
+# main
+function compile_fsedits(){
+	parseOpts && [ ! "${ANTSOPTS}" ] && ANTSOPTS=" -m 30x75x45x40x25x10 -n 0 -t GR"
+	parallel -k --link --bar compile_SubjectEdits {} "${TEMPLATE}" "${ANTSOPTS}" ::: ${SUBJECTS}
+	compile_GroupEdits
+}
+
+compile_fsedits
+
+##
+###
+#####
+#######

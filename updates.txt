@@ -1,0 +1,73 @@
+    add binary for surfaceMapInfo for right hemisphere
+
+    	1) modify inflated_left to inflated_right for right hemisphere output
+    	2) modify var surfaceMapInfo to contain both left and right encodings
+
+    		var surfaceMapInfo = {"inflated_left":* ,"inflated_right":*}
+
+    reveal option for viewing left or right
+    	change
+	        $("#select-hemisphere").hide();
+	        $("#select-kind").hide();
+	    to
+            $("#select-hemisphere").change(addPlot);
+            $("#select-kind").hide();                    
+
+updates to python html output for displaying edits
+- plot on individual not fsaverage
+- add css definition in head
+- update width of view
+    let height = Math.min($(window).outerHeight() * .8,
+                            $(window).width() * 2 / 3);
+    let width = Math.min($(window).outerWidth());
+
+- update colors
+        	from: 	paper_bgcolor: blackBg ? '#000': '#fff',
+	        to:		paper_bgcolor: blackBg ? '#000': '#9893b8',
+- remove colorbar
+            // addColorbar(surfaceMapInfo["colorscale"],
+            //             surfaceMapInfo["cmin"],
+            //             surfaceMapInfo["cmax"],
+            //             divId, layout, config);
+
+
+updates to css.main
+ - change background color to #0f111c
+ line 1625: 	
+ 	body {
+		background: #0f111c;
+		}
+  line 1953
+  		background: #0f111c;
+ 
+ - make width half as long
+  line 1961 
+  		width: 50%;
+ 
+ - add a resize none
+   line 1962
+   		resize:none;
+
+ - set font sizes based on screen width
+ 		@media screen and (max-width: 1680px) {
+
+			body, input, select, textarea {
+				font-size: 18pt;			}
+
+		}
+
+		@media screen and (max-width: 1280px) {
+
+			body, input, select, textarea {
+				font-size: 14pt;
+			}
+
+		}
+
+		@media screen and (max-width: 360px) {
+
+			body, input, select, textarea {
+				font-size: 12pt;
+			}
+
+		}            
