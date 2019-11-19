@@ -238,10 +238,10 @@ export -f surfergems_files
 function surfergems_status(){
 	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_status $@ (${SECONDS}s elapsed)"
 	# declare vars for status check & printing
-	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${BLUE}success${NC}" "${YELLOW}failed${NC}" "${GREEN}done${NC}" "${RED}incomplete${NC}")	
+	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY} active ${NC}" "${BLUE} success ${NC}" "${YELLOW} failed ${NC}" "${GREEN} done ${NC}" "${RED} incomplete ${NC}")	
 	echo -e "\n\n ${NC}  🔦 Searching Dataset\n   ⤷ ${GGREY}${YBC}${SUBJECTS_DIR}${NC}\n"
 	# Find all subjects with IsRunning file, get current status, time and host
-	if [ "$(echo "${STATUS[*]}" | grep 'active')" ]; then
+	if [ "$(echo "${STATUS[*]}" | grep -w 'active')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'complete')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'incomplete')" ]; then
 	    for SUBJECT in "${SUBJECTS[@]}"; do
 		    declare -g RUNNINGSUBJECTS+=($(find "${SUBJECTS_DIR}/${SUBJECT}" \( ! -regex '.*/\..*' \) -name 'IsRunning*' 2> /dev/null | sed "s|${SUBJECTS_DIR}||g" | sed "s|scripts/IsRunning.*||g" | sed "s|/||g"))
 		done
@@ -253,7 +253,7 @@ function surfergems_status(){
 		done
 	fi
 	# Find all subjects with recon-all.log file and list those with finished message at end of log
-	if [ "$(echo ${STATUS[*]} | grep 'success')" ]; then
+	if [ "$(echo ${STATUS[*]} | grep -w 'success')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'complete')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'incomplete')" ]; then
 		RECONS=""
 		for SUBJECT in "${SUBJECTS[@]}"; do
 		    RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "
@@ -271,7 +271,7 @@ function surfergems_status(){
 			((counter++))
 		done
 	fi
-	if [ "$(echo ${STATUS[*]} | grep 'failed')" ]; then
+	if [ "$(echo ${STATUS[*]} | grep -w 'failed')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'complete')" ] || [ "$(echo "${STATUS[*]}" | grep -w 'incomplete')" ]; then
 		RECONS=""
 		for SUBJECT in "${SUBJECTS[@]}"; do
 			RECONS+="$(find ${SUBJECTS_DIR}/${SUBJECT}/scripts \( ! -regex '.*/\..*' \)  -name 'recon-all.log' -not -iwholename '*fsaverage*' 2> /dev/null) "			
@@ -300,7 +300,7 @@ function surfergems_status(){
 	if [ ! "${SUBJECTS}" ]; then
 		printf "◀︎|⁃‣ No Subjects found in ${SUBJECTS_DIR} with status %s\n" $(echo -e "${STATUS[@]}")
 	fi
-	if [ "$(echo ${STATUS[*]} | grep 'incomplete')" ] || [ "$(echo ${STATUS[*]} | grep 'complete')" ]; then
+	if [ "$(echo ${STATUS[*]} | grep -w 'incomplete')" ] || [ "$(echo ${STATUS[*]} | grep -w 'complete')" ]; then
 		surfergems_files
 	fi
 	# signal that the status has been checked (prevents this from being run twice when called to populate an empty subjects variable that may be empty anyway bc none satisfy conditions (i.e. failed))
@@ -372,7 +372,7 @@ function surfergems_check_input_subjects(){
 		# get list of subjects with complete data by default
 		if [ ! "${SUBJECTS}" ]
 		then
-			surfergems_status > /dev/null && declare -g SUBJECTS=("${COMPLETESUB[@]}") && local subjects=${SUBJECTS[@]}	
+			surfergems_status && declare -g SUBJECTS=("${COMPLETESUB[@]}") && local subjects=${SUBJECTS[@]}	
 		else
 			# otherwise just use existing global variable and run serially
 			local averages="$(echo "${SUBJECTS[@]}" | grep -oE '(\s.*?_)?average\s?')"
@@ -397,10 +397,10 @@ function surfergems_stats(){
 	>&2 echo -e "  🕷🔨 ${YELLOW}DEBUG${NC} surfergems_stats $@ (${SECONDS}s elapsed)"		
 	local subjects="$(surfergems_check_input_subjects "$@")"
 	# declare vars for status check & printing
-	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${BLUE}success${NC}" "${YELLOW}failed${NC}" "${GREEN}done${NC}" "${RED}incomplete${NC}")		
+	[ ! "${STATUS}" ] && declare -g STATUS=("${GREY} active ${NC}" "${BLUE} success ${NC}" "${YELLOW} failed ${NC}" "${GREEN} done ${NC}" "${RED} incomplete ${NC}")		
 	# summarize subject edits
 	# TODO redirection works here?
-	if echo "${subjects}" | parallel -k --link --progress '(surfergems_subject_edits {})'
+	if echo "${subjects}" | parallel -k --link --bar '(surfergems_subject_edits {})' 3>&4 4>&2
 	then
 		>&4 printf "${GREEN}◀︎|⁃‣SUCCESS${GREY}  parallel -k --link surfergems_subject_edits {} ::: ${subjects}${NC}\n"
 	else
@@ -1153,7 +1153,7 @@ function surfergems_printstatus(){
 		# print DATASET MANIFEST to status
 		[ ${FILECHECK} ] && local string=DATASET-MANIFEST
 		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}COMPLETION-TIME\t${GGREY}TIME-ELAPSED\t${string}\n")
-		echo -e "\n✅ ${GREEN}${#FINISHEDSUBJECTS[@]} Completed Jobs :: ${NC}\n"
+		echo -e "\n✅ ${GREEN}${#FINISHEDSUBJECTS[@]} Successfully Completed Jobs :: ${NC}\n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t
 	else
 		echo -e "${GREY}◀︎⁃${RED}∅ ${GREY}NO COMPLETED JOBS${NC}" >&2		
@@ -1167,18 +1167,18 @@ function surfergems_printstatus(){
 		done
 		status=$(echo -e ${status} | sort -k1 -r)
 		header=$(echo -e "\n${GGREY}HOST\t${GGREY}SUBJECTID\t${GGREY}RECON-STEP\t${GGREY}TIME-FAILED\n")
-		echo -e "🔥 ${YELLOW}${#FAILEDSUBJECTS[@]} Failed Jobs${NC} :: \n"
+		echo -e "\n🔥 ${YELLOW}${#FAILEDSUBJECTS[@]} Failed Jobs${NC} :: \n"
 		echo -e "${header}\n${status}" | column -s $'\t' -t && echo -e '\n'
 	else
 		echo -e "${GREY}◀︎⁃${RED}∅ ${GREY}NO FAILED JOBS${NC}" >&2		
 	fi
-	if [ "${RERUNSUB}" ]; then 
-		echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC} $(printf "${FREESURFER_HOME}recon-all -s %s -make all\n" ${RERUNSUB[@]})"
-		echo -e "\n${YELLOW}RERUN LIST:${NC} $(printf '%s ' ${RERUNSUB[@]})" >&2
-	fi
-	if [ "$(echo ${COMPLETESUB[@]})" ]; then
+	if [ "$(echo "${STATUS[*]}" | grep -w 'complete')" ] && [ "$(echo ${COMPLETESUB[@]})" ]; then
 		echo -e "\n${GREEN}Complete file manifests (ready for analysis):${NC} $(printf "${BLUE}%s${NC} " ${COMPLETESUB[@]})"
 	fi
+	if [ "$(echo "${STATUS[*]}" | grep -w 'incomplete')" ] && [ "$(echo ${RERUNSUB[@]})" ]; then
+		echo -e "\n${LRED}Resubmit the following jobs (incomplete file manifest):${NC} $(printf "${FREESURFER_HOME}recon-all -s %s -make all\n" ${RERUNSUB[@]})"
+		echo -e "\n${YELLOW}RERUN LIST:${NC} $(printf '%s ' ${RERUNSUB[@]})" >&2
+	fi	
 	[ "${VERBOSE}" ] && surfergems_printstatus_verbose	
 	return 0
 }
@@ -3352,7 +3352,7 @@ function surfergems_parseopts(){
 		    ;;		    	    	
 	    --files|-f)
 			FILECHECK='checkemall'
-			STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${BLUE}done${NC}" "${YELLOW}failed${NC}" "${LRED}incomplete${NC}")
+			STATUS=("${GREY} active ${NC}" "${GREEN} success ${NC}" "${BLUE} done ${NC}" "${YELLOW} failed ${NC}" "${LRED} incomplete ${NC}")
 		    ;;
 		--edits-summary|-es)
 			if [ -n "$2" ]; then 
@@ -3413,27 +3413,27 @@ function surfergems_parseopts(){
 	    --status|-st)
 		    if [ -n "$2" ]; then
 		    	if [ "$(echo "$2" | grep '^-')" ]; then
-		    		declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+		    		declare -g STATUS=("${GREY} active ${NC}" "${GREEN} success ${NC}" "${YELLOW} failed ${NC}")
 		    	else
 			    	if [ "$2" = 'active' ]; then
-			    		declare -g STATUS+=("${GREY}${2}${NC}")
+			    		declare -g STATUS+=("${GREY} ${2} ${NC}")
 			    	elif [ "$2" = 'complete' ]; then
-			    		declare -g STATUS+=("${BLUE}${2}${NC}")
+			    		declare -g STATUS+=("${BLUE} ${2} ${NC}")
 			    	elif [ "$2" = 'failed' ]; then
-			    		declare -g STATUS+=("${RED}${2}${NC}")
+			    		declare -g STATUS+=("${RED} ${2} ${NC}")
 			    	elif [ "$2" = 'incomplete' ]; then
-			    		declare -g STATUS+=("${RED}${2}${NC}")			    		
+			    		declare -g STATUS+=("${RED} ${2} ${NC}")			    		
 			    	elif [ "$2" = 'success' ]; then
-			    		declare -g STATUS+=("${GREEN}${2}${NC}")			    		
+			    		declare -g STATUS+=("${GREEN} ${2} ${NC}")			    		
 			    	elif [ "$(echo ${OPTS} | grep -oE -- ${2})" ]; then
-			    		declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+			    		declare -g STATUS=("${GREY} active ${NC}" "${GREEN} success ${NC}" "${YELLOW} failed ${NC}")
 			    	else
-			    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "success" "failed" "done" "incomplete". User input was "'${2}'"\n...exiting'
+			    		echo -e ${BRED}'ERROR: '${NC}'legal values for --status are "active" "success" "failed" "complete" "incomplete". User input was "'${2}'"\n...exiting'
 			    	fi
 					shift
 				fi
 			else
-				[ ! "${STATUS}" ] && declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+				[ ! "${STATUS}" ] && declare -g STATUS=("${GREY} active ${NC}" "${GREEN} success ${NC}" "${YELLOW} failed ${NC}")
 		    fi
 		    ;;		    
 		--subjects|-s)
@@ -3515,7 +3515,7 @@ function surfergems_parseopts(){
 		    	fi
 		    	shift
 			else
-				declare -g STATUS=("${GREY}active${NC}" "${GREEN}success${NC}" "${YELLOW}failed${NC}")
+				declare -g STATUS=("${GREY} active ${NC}" "${GREEN} success ${NC}" "${YELLOW} failed ${NC}")
 		    fi
 			HTMLREPORT='makereport'
 			;;
@@ -3688,7 +3688,7 @@ function surfergems(){
 	# get statistics for jobs
 	if [ "${RECONSTATS}" ]; then
 		echo -e "${YELLOW}⏣ ${GREY}Computing Run Time Statistics"		
-		(if surfergems_stats "${SUBJECTS[@]}" 4>>${debugout} 2>>${debugerr} 
+		(if surfergems_stats 4>>${debugout} 2>>${debugerr} 
 		then
 			printf "\r${GREEN}◀︎|⁃‣SUCCESS${NC}  surfergems_stats ${SUBJECTS[@]}\n" >> ${debugout}
 			echo 'return 0' > /tmp/surfergems-return-val
